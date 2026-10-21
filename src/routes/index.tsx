@@ -37,7 +37,7 @@ function Landing() {
           <span className="font-display text-xl font-bold">Javobchi</span>
         </div>
         <Button asChild variant="outline">
-          <Link to="/inbox">Panelga kirish</Link>
+          <Link to="/inbox" search={{ c: undefined }}>Panelga kirish</Link>
         </Button>
       </header>
 
