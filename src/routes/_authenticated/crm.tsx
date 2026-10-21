@@ -60,7 +60,7 @@ function CrmPage() {
   const nameOf = (id: string) => customers.find((c) => c.id === id)?.full_name ?? "—";
 
   async function addCustomer() {
-    if (!cForm.full_name.trim() || !cForm.phone.trim()) return toast.error("Ism va telefonni kiriting");
+    if (!cForm.full_name.trim() || !cForm.phone.trim()) { toast.error("Ism va telefonni kiriting"); return; }
     const { error } = await supabase.from("crm_customers").insert({
       full_name: cForm.full_name.trim(),
       phone: cForm.phone.trim(),
@@ -69,7 +69,7 @@ function CrmPage() {
       instagram_handle: cForm.instagram_handle.replace(/^@/, "").trim() || null,
       city: cForm.city.trim() || null,
     });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Mijoz qo'shildi");
     setCustomerOpen(false);
     setCForm({ full_name: "", phone: "", telegram_username: "", instagram_handle: "", city: "" });
@@ -77,7 +77,7 @@ function CrmPage() {
   }
 
   async function addOrder() {
-    if (!oForm.customer_id || !oForm.order_number.trim()) return toast.error("Mijoz va buyurtma raqamini kiriting");
+    if (!oForm.customer_id || !oForm.order_number.trim()) { toast.error("Mijoz va buyurtma raqamini kiriting"); return; }
     const { error } = await supabase.from("crm_orders").insert({
       customer_id: oForm.customer_id,
       order_number: normalizeOrderNumber(oForm.order_number),
@@ -85,7 +85,7 @@ function CrmPage() {
       total: Number(oForm.total.replace(/\s/g, "")) || 0,
       expected_delivery: oForm.expected_delivery || null,
     });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Buyurtma qo'shildi");
     setOrderOpen(false);
     setOForm({ customer_id: "", order_number: "", items: "", total: "", expected_delivery: "" });
@@ -94,7 +94,7 @@ function CrmPage() {
 
   async function setStatus(id: string, status: string) {
     const { error } = await supabase.from("crm_orders").update({ status }).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Status yangilandi — AI agent endi yangi statusni aytadi");
     queryClient.invalidateQueries({ queryKey: ["crm_orders"] });
   }

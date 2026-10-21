@@ -56,7 +56,7 @@ function ChannelsPage() {
   const [sending, setSending] = useState(false);
 
   async function send() {
-    if (!form.contactName.trim() || !form.text.trim()) return toast.error("Ism va xabarni kiriting");
+    if (!form.contactName.trim() || !form.text.trim()) { toast.error("Ism va xabarni kiriting"); return; }
     setSending(true);
     try {
       const result = await simulate({

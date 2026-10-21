@@ -96,7 +96,7 @@ function SettingsForm() {
       })
       .eq("owner_id", settings?.owner_id ?? "");
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Sozlamalar saqlandi");
     queryClient.invalidateQueries({ queryKey: ["agent_settings"] });
   }
@@ -106,7 +106,7 @@ function SettingsForm() {
       .from("agent_settings")
       .update({ is_live: next })
       .eq("owner_id", settings?.owner_id ?? "");
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(next ? "Agent jonli efirda — mijozlarga avtomatik javob beradi" : "Agent o'chirildi");
     queryClient.invalidateQueries({ queryKey: ["agent_settings"] });
   }

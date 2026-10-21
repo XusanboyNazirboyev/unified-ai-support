@@ -57,7 +57,7 @@ function KnowledgePage() {
           .update({ ...payload, updated_at: new Date().toISOString() })
           .eq("id", draft.id)
       : await supabase.from("kb_articles").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(draft.id ? "Maqola yangilandi" : "Maqola qo'shildi");
     setDraft(null);
     queryClient.invalidateQueries({ queryKey: ["kb_articles"] });
@@ -66,7 +66,7 @@ function KnowledgePage() {
   async function remove(article: KbArticle) {
     if (!confirm(`"${article.title}" o'chirilsinmi?`)) return;
     const { error } = await supabase.from("kb_articles").delete().eq("id", article.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("O'chirildi");
     queryClient.invalidateQueries({ queryKey: ["kb_articles"] });
   }
