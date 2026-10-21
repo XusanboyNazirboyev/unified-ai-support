@@ -8,3 +8,8 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Architecture rules
+- The AI agent (prompt + tools) lives only in `src/lib/ai/agent.server.ts`; the test chat route (`/api/agent-chat`) and inbox server functions both reuse it so sandbox and live answers behave identically.
+- Every workspace table is scoped by `owner_id = auth.uid()` RLS; new accounts get demo data from the `seed_demo_workspace` signup trigger, never from app code.
+- Pure business rules (handover keywords, phone/order matching, KB ranking) live in `src/lib/agent-rules.ts` with tests in `src/test/agent-rules.test.ts`.
