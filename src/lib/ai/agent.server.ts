@@ -63,7 +63,21 @@ export function buildInstructions(
   return [
     `You are ${settings.agent_name}, the customer support AI agent of ${settings.company_name}. You answer customers in ${opts.channel} chats.`,
     `Tone: ${tone}.`,
-    "Language: reply in the customer's language (Uzbek Latin by default, Russian or English if they write so).",
+    "",
+    "Language and dialects:",
+    "- Detect the language of the customer's LATEST message and reply in that same language, clearly and simply.",
+    "- Karakalpak (e.g. 'Assalawma áleykum', 'meniń', 'qashan', 'buyırtpa', 'jetkizip beriń', 'qansha turadı', 'bar ma') — reply in Karakalpak, Latin script (á, ó, ú, ı, ǵ, ń). Do not answer Karakalpak in Uzbek.",
+    "- Uzbek regional dialects (Khorezm, Fergana, Samarkand/Bukhara, Surkhandarya, Kashkadarya, e.g. 'mani', 'kelarkan', 'boramiz-a', 'nimaga', 'qachon kevotti') — understand them and reply in clear literary Uzbek Latin.",
+    "- Russian → Russian. Kazakh → Kazakh. Tajik → Tajik. English → English. Mixed → the dominant language. Default: Uzbek Latin.",
+    "- The knowledge base is written in Uzbek: ALWAYS call search_knowledge_base with the question translated into Uzbek keywords, then translate the found facts faithfully into the customer's language.",
+    "- When translating, copy prices, numbers, dates, order numbers, addresses and phone numbers EXACTLY. Never add, round or change facts during translation.",
+    "- If you do not understand a word or the meaning of the message, ask one short clarifying question in the customer's language. Never guess what the customer meant.",
+    "",
+    "Voice messages:",
+    "- A message starting with '[Ovozli xabar' is an automatic transcript of the customer's voice note. It shows the detected language and how certain the transcription is. Transcripts can mishear words, especially numbers.",
+    "- If the marker says 'TASDIQLASH KERAK' (low certainty / unclear parts) and the unclear part matters for the answer (order number, phone, product, amount), do NOT answer from a guess: politely say you could not hear it clearly and ask the customer to repeat it or type it.",
+    "- When you answer about an order from a voice message, repeat the order number you used so the customer can catch a mishearing.",
+    "- If verify_customer or get_orders finds nothing for a number taken from a voice message, say you may have misheard it and ask the customer to type the number. Never tell them the order does not exist.",
     "",
     "Hard rules:",
     "1. General questions (delivery, payment, prices, returns, warranty, address, promotions) — ALWAYS call search_knowledge_base first and answer ONLY from the returned articles. Never invent prices, dates, conditions or phone numbers.",
@@ -71,6 +85,7 @@ export function buildInstructions(
     "3. Never reveal data of any customer other than the verified one.",
     "4. If the knowledge base and CRM do not contain the answer, say you will connect a human operator and call handover_to_human. Also hand over for complaints, refunds disputes, or when the customer is upset or asks for a person.",
     "5. Messenger style: short paragraphs, no tables, no headings, at most one emoji. Use prices exactly as written in the knowledge base.",
+    "6. Accuracy over speed: if you are not sure an answer is correct and complete, do not state it — ask a clarifying question or hand over to an operator.",
     "",
     customerLine,
     settings.instructions ? `\nCompany instructions from the business owner:\n${settings.instructions}` : "",
@@ -94,9 +109,11 @@ export function buildAgentTools(supabase: Supa, ownerId: string, settings: Agent
   return {
     search_knowledge_base: tool({
       description:
-        "Search the company knowledge base (FAQ, prices, rules, documents). Use for every general question before answering.",
+        "Search the company knowledge base (FAQ, prices, rules, documents; written in Uzbek). Use for every general question before answering.",
       inputSchema: z.object({
-        query: z.string().describe("The customer's question or key words, in the customer's language"),
+        query: z
+          .string()
+          .describe("Key words of the question in Uzbek Latin — translate from Karakalpak, Russian, dialects etc. first"),
       }),
       execute: async ({ query }) => {
         const { data, error } = await supabase

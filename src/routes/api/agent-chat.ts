@@ -12,6 +12,7 @@ import {
 } from "@/lib/ai/agent.server";
 import { getLovableAiGatewayRunId, withLovableAiGatewayRunIdHeader } from "@/lib/ai/run-id.server";
 import { getUserClientFromRequest } from "@/lib/supabase-user.server";
+import { formatVoiceForAgent, parseVoiceMeta } from "@/lib/voice";
 
 const bodySchema = z.object({
   messages: z.array(z.any()).min(1).max(60),
@@ -31,6 +32,16 @@ async function handleTestChat(request: Request): Promise<Response> {
 
   const { supabase, userId } = user;
   const messages = parsed.data.messages as UIMessage[];
+  // Voice notes arrive as transcripts with metadata; the agent sees them with a voice marker.
+  const agentMessages = messages.map((m) => {
+    const raw = m.role === "user" ? (m.metadata as { voice?: unknown } | undefined)?.voice : undefined;
+    if (!raw) return m;
+    const meta = parseVoiceMeta(raw);
+    return {
+      ...m,
+      parts: m.parts.map((p) => (p.type === "text" ? { ...p, text: formatVoiceForAgent(p.text, meta) } : p)),
+    };
+  });
   const channel = parsed.data.channel ?? "telegram";
 
   const settings = await loadAgentSettings(supabase, userId);
@@ -51,7 +62,7 @@ async function handleTestChat(request: Request): Promise<Response> {
     apiKey,
     initialRunId: getLovableAiGatewayRunId(request),
     instructions: buildInstructions(settings, { channel, customer }),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(agentMessages),
     tools,
     abortSignal: request.signal,
   });

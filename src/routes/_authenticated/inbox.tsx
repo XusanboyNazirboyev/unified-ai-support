@@ -36,6 +36,8 @@ import {
   type Message,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { parseVoiceMeta, type VoiceMeta, type VoiceTranscript } from "@/lib/voice";
+import { VoiceBadge, VoiceRecordButton } from "@/components/voice-input";
 
 type StatusFilter = "all" | "pending" | "open" | "resolved";
 
@@ -267,7 +269,10 @@ function MessageRow({ message }: { message: Message }) {
   if (message.role === "customer") {
     return (
       <div className="flex max-w-[80%] flex-col items-start">
-        <div className="rounded-2xl rounded-bl-sm border bg-card px-3.5 py-2.5 text-sm shadow-sm">{message.content}</div>
+        <div className="rounded-2xl rounded-bl-sm border bg-card px-3.5 py-2.5 text-sm shadow-sm">
+          {message.is_voice && <VoiceBadge meta={parseVoiceMeta(message.voice_meta)} className="mb-1 text-muted-foreground" />}
+          <p className="whitespace-pre-wrap">{message.content}</p>
+        </div>
         <span className="mt-1 text-[10px] text-muted-foreground">{time}</span>
       </div>
     );
@@ -325,6 +330,30 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
     await refresh();
   }
 
+  async function sendCustomerVoice({ transcript, meta }: VoiceTranscript) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await runIncoming(transcript, meta);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Xabar yuborilmadi");
+    } finally {
+      setBusy(false);
+      await refresh();
+    }
+  }
+
+  async function runIncoming(value: string, voice: VoiceMeta | null) {
+    const result = await processIncoming({ data: { conversationId: conversation.id, text: value, voice } });
+    const notes: Record<string, string> = {
+      handover: "Suhbat operatorga uzatildi",
+      waiting_operator: "Suhbat operator rejimida — AI javob bermaydi",
+      agent_offline: "AI agent o'chiq. Uni AI agent sahifasida yoqing",
+    };
+    if (result.outcome === "ai_error") toast.error(result.message ?? "AI xatosi");
+    else if (notes[result.outcome]) toast.info(notes[result.outcome]);
+  }
+
   async function send() {
     const value = text.trim();
     if (!value || busy) return;
@@ -332,14 +361,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
     setText("");
     try {
       if (asCustomer) {
-        const result = await processIncoming({ data: { conversationId: conversation.id, text: value } });
-        const notes: Record<string, string> = {
-          handover: "Suhbat operatorga uzatildi",
-          waiting_operator: "Suhbat operator rejimida — AI javob bermaydi",
-          agent_offline: "AI agent o'chiq. Uni AI agent sahifasida yoqing",
-        };
-        if (result.outcome === "ai_error") toast.error(result.message ?? "AI xatosi");
-        else if (notes[result.outcome]) toast.info(notes[result.outcome]);
+        await runIncoming(value, null);
       } else {
         const lastCustomer = [...messages].reverse().find((m) => m.role === "customer");
         const { error } = await supabase.from("messages").insert({
@@ -484,6 +506,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
               }
               className="min-h-[52px] resize-none"
             />
+            {asCustomer && <VoiceRecordButton allowUpload disabled={busy} onTranscribed={sendCustomerVoice} />}
             <Button size="icon" onClick={() => void send()} disabled={busy || !text.trim()} aria-label="Yuborish">
               <SendHorizonal className="size-4" />
             </Button>

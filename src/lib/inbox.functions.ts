@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { detectHandoverKeyword, normalizePhone } from "@/lib/agent-rules";
+import { formatVoiceForAgent, parseVoiceMeta, VOICE_LANGUAGES, type VoiceMeta } from "@/lib/voice";
 import {
   buildAgentTools,
   buildInstructions,
@@ -27,6 +28,7 @@ async function handleIncoming(
   userId: string,
   conversationId: string,
   text: string,
+  voice: VoiceMeta | null = null,
 ): Promise<IncomingResult> {
   const { data: conversation, error: convError } = await supabase
     .from("conversations")
@@ -41,13 +43,15 @@ async function handleIncoming(
     conversation_id: conversationId,
     role: "customer",
     content: text,
+    is_voice: voice !== null,
+    voice_meta: voice,
   });
   if (insertError) throw new Error(`Xabarni saqlab bo'lmadi: ${insertError.message}`);
 
   await supabase
     .from("conversations")
     .update({
-      last_message_preview: text.slice(0, 140),
+      last_message_preview: (voice ? `🎤 ${text}` : text).slice(0, 140),
       last_message_at: new Date().toISOString(),
       unread_count: conversation.unread_count + 1,
       status: conversation.status === "resolved" ? "open" : conversation.status,
@@ -70,7 +74,7 @@ async function handleIncoming(
 
   const { data: history } = await supabase
     .from("messages")
-    .select("role, content")
+    .select("role, content, is_voice, voice_meta")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: false })
     .limit(30);
@@ -79,7 +83,10 @@ async function handleIncoming(
     .filter((m) => m.role !== "system")
     .map((m) =>
       m.role === "customer"
-        ? { role: "user" as const, content: m.content }
+        ? {
+            role: "user" as const,
+            content: m.is_voice ? formatVoiceForAgent(m.content, parseVoiceMeta(m.voice_meta)) : m.content,
+          }
         : { role: "assistant" as const, content: m.content },
     );
 
@@ -159,13 +166,25 @@ async function handOver(supabase: Supa, userId: string, conversationId: string, 
     .eq("id", conversationId);
 }
 
+const voiceSchema = z
+  .object({
+    language: z.enum(VOICE_LANGUAGES),
+    dialect: z.string().max(80).nullable(),
+    confidence: z.enum(["high", "medium", "low"]),
+    unclear_parts: z.array(z.string().max(200)).max(20),
+  })
+  .nullable()
+  .default(null);
+
 export const processIncomingMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ conversationId: z.string().uuid(), text: z.string().trim().min(1).max(2000) }).parse(input),
+    z
+      .object({ conversationId: z.string().uuid(), text: z.string().trim().min(1).max(4000), voice: voiceSchema })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    return handleIncoming(context.supabase, context.userId, data.conversationId, data.text);
+    return handleIncoming(context.supabase, context.userId, data.conversationId, data.text, data.voice);
   });
 
 export const simulateNewConversation = createServerFn({ method: "POST" })
@@ -176,7 +195,8 @@ export const simulateNewConversation = createServerFn({ method: "POST" })
         channel: z.enum(["telegram", "instagram", "whatsapp"]),
         contactName: z.string().trim().min(1).max(80),
         contactHandle: z.string().trim().max(80).nullable(),
-        text: z.string().trim().min(1).max(2000),
+        text: z.string().trim().min(1).max(4000),
+        voice: voiceSchema,
       })
       .parse(input),
   )
@@ -212,12 +232,12 @@ export const simulateNewConversation = createServerFn({ method: "POST" })
             : `@${handle}`
           : null,
         customer_id: customerId,
-        last_message_preview: data.text.slice(0, 140),
+        last_message_preview: (data.voice ? `🎤 ${data.text}` : data.text).slice(0, 140),
       })
       .select("id")
       .single();
     if (error || !conversation) throw new Error(`Suhbatni yaratib bo'lmadi: ${error?.message ?? ""}`);
 
-    const result = await handleIncoming(supabase, userId, conversation.id, data.text);
+    const result = await handleIncoming(supabase, userId, conversation.id, data.text, data.voice);
     return { conversationId: conversation.id, ...result };
   });

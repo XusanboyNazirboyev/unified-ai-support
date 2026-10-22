@@ -32,6 +32,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CHANNEL_LABELS, CHANNELS, type Channel } from "@/lib/agent-rules";
 import { customersQuery, settingsQuery } from "@/lib/queries";
+import { parseVoiceMeta } from "@/lib/voice";
+import { VoiceBadge, VoiceRecordButton } from "@/components/voice-input";
 
 export const Route = createFileRoute("/_authenticated/agent")({
   head: () => ({
@@ -234,7 +236,8 @@ const SUGGESTIONS = [
   "Toshkentga yetkazib berish qancha turadi?",
   "TM-1042 buyurtmam qayerda?",
   "iPhone 16 narxi qancha, nasiyaga bo'ladimi?",
-  "Konditsionerni o'rnatib berasizlarmi?",
+  "Assalawma áleykum, Nókiske jetkizip beresiz be? Qansha turadı?",
+  "Mani zakazim qachon kelarkan, aka? Xorazmga boramisila?",
 ];
 
 function TestChat() {
@@ -347,13 +350,14 @@ function TestChat() {
             <ConversationEmptyState
               icon={<img src={logo} alt="" width={56} height={56} className="size-14" />}
               title="Agentni sinab ko'ring"
-              description="Mijoz kabi yozing. Har bir javob ostida qaysi bilim yoki CRM yozuvidan foydalanilgani ko'rinadi."
+              description="Mijoz kabi yozing yoki ovozli xabar yuboring. Har bir javob ostida qaysi bilim yoki CRM yozuvidan foydalanilgani ko'rinadi."
             >
               <div className="mt-2 flex flex-col items-center gap-3">
                 <img src={logo} alt="" width={56} height={56} className="size-14" />
                 <div className="font-display text-lg font-semibold">Agentni sinab ko'ring</div>
                 <p className="max-w-sm text-center text-sm text-muted-foreground">
-                  Mijoz kabi yozing. Har bir javob ostida qaysi bilim yoki CRM yozuvidan foydalanilgani ko'rinadi.
+                  Mijoz kabi yozing yoki mikrofon tugmasi bilan ovozli xabar yuboring — o'zbek shevalari, qoraqalpoq,
+                  rus va boshqa tillarda. Har bir javob ostida qaysi bilim yoki CRM yozuvidan foydalanilgani ko'rinadi.
                 </p>
                 <div className="mt-2 flex max-w-md flex-wrap justify-center gap-2">
                   {SUGGESTIONS.map((s) => (
@@ -383,10 +387,12 @@ function TestChat() {
                   >
                     {message.parts.map((part, i) => {
                       if (part.type === "text") {
+                        const voice = parseVoiceMeta((message.metadata as { voice?: unknown } | undefined)?.voice);
                         return message.role === "user" ? (
-                          <p key={i} className="whitespace-pre-wrap">
-                            {part.text}
-                          </p>
+                          <div key={i} className="space-y-1">
+                            {voice && <VoiceBadge meta={voice} />}
+                            <p className="whitespace-pre-wrap">{part.text}</p>
+                          </div>
                         ) : (
                           <MessageResponse key={i}>{part.text}</MessageResponse>
                         );
@@ -451,8 +457,16 @@ function TestChat() {
 
       <div className="border-t p-3">
         <PromptInput onSubmit={(msg) => submit(msg.text)}>
-          <PromptInputTextarea placeholder="Mijoz sifatida yozing..." autoFocus />
-          <PromptInputFooter className="justify-end">
+          <PromptInputTextarea placeholder="Mijoz sifatida yozing yoki ovozli xabar yuboring..." autoFocus />
+          <PromptInputFooter className="justify-between">
+            <VoiceRecordButton
+              allowUpload
+              disabled={busy}
+              onTranscribed={({ transcript, meta }) => {
+                if (busy) return;
+                sendMessage({ text: transcript, metadata: { voice: meta } });
+              }}
+            />
             <PromptInputSubmit status={status} onStop={stop} />
           </PromptInputFooter>
         </PromptInput>
