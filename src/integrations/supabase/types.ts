@@ -264,30 +264,36 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          is_voice: boolean
           owner_id: string
           response_ms: number | null
           role: Database["public"]["Enums"]["message_role"]
           sources: Json
+          voice_meta: Json | null
         }
         Insert: {
           content: string
           conversation_id: string
           created_at?: string
           id?: string
+          is_voice?: boolean
           owner_id?: string
           response_ms?: number | null
           role: Database["public"]["Enums"]["message_role"]
           sources?: Json
+          voice_meta?: Json | null
         }
         Update: {
           content?: string
           conversation_id?: string
           created_at?: string
           id?: string
+          is_voice?: boolean
           owner_id?: string
           response_ms?: number | null
           role?: Database["public"]["Enums"]["message_role"]
           sources?: Json
+          voice_meta?: Json | null
         }
         Relationships: [
           {

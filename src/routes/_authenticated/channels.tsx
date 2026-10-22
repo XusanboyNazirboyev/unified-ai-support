@@ -16,6 +16,8 @@ import { CHANNEL_LABELS, CHANNELS, type Channel } from "@/lib/agent-rules";
 import { simulateNewConversation } from "@/lib/inbox.functions";
 import { channelsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import type { VoiceTranscript } from "@/lib/voice";
+import { VoiceRecordButton } from "@/components/voice-input";
 
 export const Route = createFileRoute("/_authenticated/channels")({
   head: () => ({
@@ -55,8 +57,9 @@ function ChannelsPage() {
   });
   const [sending, setSending] = useState(false);
 
-  async function send() {
-    if (!form.contactName.trim() || !form.text.trim()) { toast.error("Ism va xabarni kiriting"); return; }
+  async function send(voice?: VoiceTranscript) {
+    const text = voice ? voice.transcript : form.text;
+    if (!form.contactName.trim() || !text.trim()) { toast.error("Ism va xabarni kiriting"); return; }
     setSending(true);
     try {
       const result = await simulate({
@@ -64,7 +67,8 @@ function ChannelsPage() {
           channel: form.channel,
           contactName: form.contactName,
           contactHandle: form.contactHandle.trim() || null,
-          text: form.text,
+          text,
+          voice: voice?.meta ?? null,
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -163,9 +167,16 @@ function ChannelsPage() {
           <p className="text-xs text-muted-foreground">
             Maslahat: username CRM'dagi mijozga mos kelsa (masalan @dilshod_k), agent uni avtomatik taniydi.
           </p>
-          <Button className="w-full" onClick={send} disabled={sending}>
-            {sending ? "Agent javob bermoqda..." : "Xabar yuborish"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button className="flex-1" onClick={() => void send()} disabled={sending}>
+              {sending ? "Agent javob bermoqda..." : "Xabar yuborish"}
+            </Button>
+            <VoiceRecordButton allowUpload disabled={sending} onTranscribed={(v) => send(v)} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Ovozli xabar: mikrofon bilan yozing yoki Telegram/WhatsApp'dan olingan audio faylni yuklang. Agent o'zbek
+            shevalari, qoraqalpoq, rus, qozoq va boshqa tillarni tushunib, o'sha tilda javob beradi.
+          </p>
         </div>
       </div>
     </div>
