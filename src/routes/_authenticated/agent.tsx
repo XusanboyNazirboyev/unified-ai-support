@@ -34,6 +34,8 @@ import { CHANNEL_LABELS, CHANNELS, type Channel } from "@/lib/agent-rules";
 import { customersQuery, settingsQuery } from "@/lib/queries";
 import { parseVoiceMeta } from "@/lib/voice";
 import { VoiceBadge, VoiceRecordButton } from "@/components/voice-input";
+import { useI18n } from "@/lib/i18n/context";
+import type { MessageKey } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_authenticated/agent")({
   head: () => ({
@@ -53,12 +55,10 @@ export const Route = createFileRoute("/_authenticated/agent")({
 });
 
 function AgentPage() {
+  const { t } = useI18n();
   return (
     <div>
-      <PageHeader
-        title="AI agent"
-        description="Agent qanday gapirishini, qachon operatorga uzatishini sozlang va jonli efirga chiqarishdan oldin xavfsiz sinov chatida tekshiring."
-      />
+      <PageHeader title={t("agent.title")} description={t("agent.description")} />
       <div className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <SettingsForm />
         <TestChat />
@@ -70,6 +70,7 @@ function AgentPage() {
 function SettingsForm() {
   const queryClient = useQueryClient();
   const { data: settings } = useSuspenseQuery(settingsQuery);
+  const { t } = useI18n();
   const [form, setForm] = useState({
     agent_name: settings?.agent_name ?? "Malika",
     company_name: settings?.company_name ?? "",
@@ -99,7 +100,7 @@ function SettingsForm() {
       .eq("owner_id", settings?.owner_id ?? "");
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Sozlamalar saqlandi");
+    toast.success(t("agent.saved"));
     queryClient.invalidateQueries({ queryKey: ["agent_settings"] });
   }
 
@@ -109,7 +110,7 @@ function SettingsForm() {
       .update({ is_live: next })
       .eq("owner_id", settings?.owner_id ?? "");
     if (error) { toast.error(error.message); return; }
-    toast.success(next ? "Agent jonli efirda — mijozlarga avtomatik javob beradi" : "Agent o'chirildi");
+    toast.success(next ? t("agent.wentLive") : t("agent.turnedOff"));
     queryClient.invalidateQueries({ queryKey: ["agent_settings"] });
   }
 
@@ -117,25 +118,23 @@ function SettingsForm() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 rounded-2xl bg-ink p-5 text-ink-foreground">
         <div>
-          <div className="font-display text-lg font-semibold">Jonli efir</div>
+          <div className="font-display text-lg font-semibold">{t("agent.liveTitle")}</div>
           <p className="mt-1 text-sm text-ink-foreground/70">
-            {settings?.is_live
-              ? "Agent Inbox'dagi yangi xabarlarga avtomatik javob bermoqda."
-              : "O'chiq: yangi xabarlar operatorni kutadi. Avval sinov chatida tekshiring."}
+            {settings?.is_live ? t("agent.liveOn") : t("agent.liveOff")}
           </p>
         </div>
-        <Switch checked={settings?.is_live ?? false} onCheckedChange={toggleLive} aria-label="Jonli efir" />
+        <Switch checked={settings?.is_live ?? false} onCheckedChange={toggleLive} aria-label={t("agent.liveTitle")} />
       </div>
 
       <div className="space-y-4 rounded-2xl border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Shaxsiyat</h2>
+        <h2 className="font-display text-lg font-semibold">{t("agent.personality")}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="agent_name">Agent ismi</Label>
+            <Label htmlFor="agent_name">{t("agent.name")}</Label>
             <Input id="agent_name" value={form.agent_name} onChange={(e) => setForm({ ...form, agent_name: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="company_name">Kompaniya nomi</Label>
+            <Label htmlFor="company_name">{t("agent.company")}</Label>
             <Input
               id="company_name"
               value={form.company_name}
@@ -144,72 +143,67 @@ function SettingsForm() {
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label>Ohang</Label>
+          <Label>{t("agent.tone")}</Label>
           <Select value={form.tone} onValueChange={(v) => setForm({ ...form, tone: v })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="samimiy">Samimiy — iliq va do'stona</SelectItem>
-              <SelectItem value="rasmiy">Rasmiy — hurmat bilan, "Siz"</SelectItem>
-              <SelectItem value="qisqa">Qisqa — 1–2 gapda</SelectItem>
+              <SelectItem value="samimiy">{t("agent.tone.samimiy")}</SelectItem>
+              <SelectItem value="rasmiy">{t("agent.tone.rasmiy")}</SelectItem>
+              <SelectItem value="qisqa">{t("agent.tone.qisqa")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="instructions">Qo'shimcha ko'rsatmalar</Label>
+          <Label htmlFor="instructions">{t("agent.instructions")}</Label>
           <Textarea
             id="instructions"
             rows={5}
             value={form.instructions}
             onChange={(e) => setForm({ ...form, instructions: e.target.value })}
-            placeholder="Masalan: har doim promo kodni eslatib o'ting"
+            placeholder={t("agent.instructionsPlaceholder")}
           />
         </div>
       </div>
 
       <div className="space-y-4 rounded-2xl border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Operatorga uzatish va xavfsizlik</h2>
+        <h2 className="font-display text-lg font-semibold">{t("agent.handoverTitle")}</h2>
         <div className="space-y-1.5">
-          <Label htmlFor="keywords">Kalit so'zlar (vergul bilan)</Label>
+          <Label htmlFor="keywords">{t("agent.keywords")}</Label>
           <Input id="keywords" value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} />
-          <p className="text-xs text-muted-foreground">
-            Mijoz shu so'zlardan birini yozsa, suhbat darhol operatorga o'tadi. Javob bazada bo'lmasa, agent ham o'zi
-            uzatadi.
-          </p>
+          <p className="text-xs text-muted-foreground">{t("agent.keywordsHint")}</p>
         </div>
         <div className="flex items-start justify-between gap-4 rounded-xl bg-muted p-4">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium">
-              <ShieldCheck className="size-4" /> Mijozni tasdiqlash
+              <ShieldCheck className="size-4" /> {t("agent.verifyTitle")}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Noma'lum kontaktga buyurtma va shaxsiy ma'lumotni faqat telefon + buyurtma raqami mos kelganda beradi.
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("agent.verifyText")}</p>
           </div>
           <Switch
             checked={form.require_verification}
             onCheckedChange={(v) => setForm({ ...form, require_verification: v })}
-            aria-label="Mijozni tasdiqlash"
+            aria-label={t("agent.verifyTitle")}
           />
         </div>
         <Button onClick={save} disabled={saving}>
-          {saving ? "Saqlanmoqda..." : "Saqlash"}
+          {saving ? t("common.saving") : t("common.save")}
         </Button>
       </div>
     </div>
   );
 }
 
-const TOOL_TITLES: Record<string, string> = {
-  search_knowledge_base: "Bilimlar bazasidan qidirish",
-  verify_customer: "Mijozni CRMda tasdiqlash",
-  get_customer_profile: "CRM: mijoz profili",
-  get_orders: "CRM: buyurtmalar",
-  handover_to_human: "Operatorga uzatish",
+const TOOL_TITLES: Record<string, MessageKey> = {
+  search_knowledge_base: "agent.tool.search_knowledge_base",
+  verify_customer: "agent.tool.verify_customer",
+  get_customer_profile: "agent.tool.get_customer_profile",
+  get_orders: "agent.tool.get_orders",
+  handover_to_human: "agent.tool.handover_to_human",
 };
 
-function sourcesFromParts(message: UIMessage) {
+function sourcesFromParts(message: UIMessage, t: ReturnType<typeof useI18n>["t"]) {
   const sources: { icon: "kb" | "crm" | "handover"; label: string }[] = [];
   for (const part of message.parts) {
     if (!part.type.startsWith("tool-")) continue;
@@ -222,12 +216,13 @@ function sourcesFromParts(message: UIMessage) {
     }
     if (name === "get_orders" && Array.isArray(out?.["orders"])) {
       for (const o of out["orders"] as { order_number: string }[])
-        sources.push({ icon: "crm", label: `Buyurtma ${o.order_number}` });
+        sources.push({ icon: "crm", label: t("agent.sourceOrder", { n: o.order_number }) });
     }
     if ((name === "verify_customer" && out?.["verified"]) || (name === "get_customer_profile" && out?.["identified"])) {
-      sources.push({ icon: "crm", label: "Mijoz profili" });
+      sources.push({ icon: "crm", label: t("agent.sourceProfile") });
     }
-    if (name === "handover_to_human") sources.push({ icon: "handover", label: "Operatorga uzatildi" });
+    if (name === "handover_to_human" && out?.["transferred"])
+      sources.push({ icon: "handover", label: t("agent.sourceHandover") });
   }
   return sources.filter((s, i) => sources.findIndex((x) => x.label === s.label) === i);
 }
@@ -235,13 +230,16 @@ function sourcesFromParts(message: UIMessage) {
 const SUGGESTIONS = [
   "Toshkentga yetkazib berish qancha turadi?",
   "TM-1042 buyurtmam qayerda?",
-  "iPhone 16 narxi qancha, nasiyaga bo'ladimi?",
+  "Menga iPhone 17 Pro kerak",
+  "Сколько стоит iPhone 16, можно в рассрочку?",
+  "Do you deliver to Samarkand?",
   "Assalawma áleykum, Nókiske jetkizip beresiz be? Qansha turadı?",
   "Mani zakazim qachon kelarkan, aka? Xorazmga boramisila?",
 ];
 
 function TestChat() {
   const { data: customers } = useSuspenseQuery(customersQuery);
+  const { t } = useI18n();
   const [persona, setPersona] = useState<string>("unknown");
   const [channel, setChannel] = useState<Channel>("telegram");
   const contextRef = useRef({ persona, channel });
@@ -268,9 +266,9 @@ function TestChat() {
     transport,
     onError: (error) => {
       const msg = error.message || "";
-      if (msg.includes("402")) toast.error("AI kreditlari tugadi. Workspace sozlamalarida kredit qo'shing.");
-      else if (msg.includes("429")) toast.error("So'rovlar ko'payib ketdi, birozdan so'ng urinib ko'ring.");
-      else toast.error(msg.length < 200 && msg ? msg : "Agent javob bera olmadi");
+      if (msg.includes("402")) toast.error(t("ai.noCredits"));
+      else if (msg.includes("429")) toast.error(t("ai.rateLimited"));
+      else toast.error(msg.length < 200 && msg ? msg : t("ai.failed"));
     },
   });
 
@@ -293,8 +291,8 @@ function TestChat() {
       <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
         <img src={logo} alt="" width={32} height={32} className="size-8" />
         <div className="mr-auto">
-          <div className="font-display font-semibold leading-tight">Xavfsiz sinov chati</div>
-          <div className="text-xs text-muted-foreground">Mijozlarga ko'rinmaydi · saqlangan sozlamalar bilan</div>
+          <div className="font-display font-semibold leading-tight">{t("test.title")}</div>
+          <div className="text-xs text-muted-foreground">{t("test.subtitle")}</div>
         </div>
         <Select
           value={channel}
@@ -324,7 +322,7 @@ function TestChat() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="unknown">Noma'lum mijoz</SelectItem>
+            <SelectItem value="unknown">{t("test.unknownCustomer")}</SelectItem>
             {customers.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.full_name} (CRM)
@@ -332,14 +330,14 @@ function TestChat() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="ghost" size="icon" onClick={reset} aria-label="Chatni tozalash">
+        <Button variant="ghost" size="icon" onClick={reset} aria-label={t("test.reset")}>
           <RotateCcw className="size-4" />
         </Button>
       </div>
 
       {personaCustomer && (
         <div className="flex items-center gap-2 border-b bg-secondary px-4 py-2 text-xs">
-          <UserCheck className="size-3.5" /> {CHANNEL_LABELS[channel]} akkaunti orqali aniqlangan mijoz:{" "}
+          <UserCheck className="size-3.5" /> {t("test.identified", { channel: CHANNEL_LABELS[channel] })}{" "}
           <b>{personaCustomer.full_name}</b>
         </div>
       )}
@@ -349,16 +347,13 @@ function TestChat() {
           {messages.length === 0 ? (
             <ConversationEmptyState
               icon={<img src={logo} alt="" width={56} height={56} className="size-14" />}
-              title="Agentni sinab ko'ring"
-              description="Mijoz kabi yozing yoki ovozli xabar yuboring. Har bir javob ostida qaysi bilim yoki CRM yozuvidan foydalanilgani ko'rinadi."
+              title={t("test.emptyTitle")}
+              description={t("test.emptyText")}
             >
               <div className="mt-2 flex flex-col items-center gap-3">
                 <img src={logo} alt="" width={56} height={56} className="size-14" />
-                <div className="font-display text-lg font-semibold">Agentni sinab ko'ring</div>
-                <p className="max-w-sm text-center text-sm text-muted-foreground">
-                  Mijoz kabi yozing yoki mikrofon tugmasi bilan ovozli xabar yuboring — o'zbek shevalari, qoraqalpoq,
-                  rus va boshqa tillarda. Har bir javob ostida qaysi bilim yoki CRM yozuvidan foydalanilgani ko'rinadi.
-                </p>
+                <div className="font-display text-lg font-semibold">{t("test.emptyTitle")}</div>
+                <p className="max-w-sm text-center text-sm text-muted-foreground">{t("test.emptyText")}</p>
                 <div className="mt-2 flex max-w-md flex-wrap justify-center gap-2">
                   {SUGGESTIONS.map((s) => (
                     <button
@@ -374,7 +369,7 @@ function TestChat() {
             </ConversationEmptyState>
           ) : (
             messages.map((message) => {
-              const sources = message.role === "assistant" ? sourcesFromParts(message) : [];
+              const sources = message.role === "assistant" ? sourcesFromParts(message, t) : [];
               const hasText = message.parts.some((p) => p.type === "text" && p.text.length > 0);
               return (
                 <Message key={message.id} from={message.role}>
@@ -405,7 +400,7 @@ function TestChat() {
                             <ToolHeader
                               type={tp.type as `tool-${string}`}
                               state={tp.state}
-                              title={TOOL_TITLES[name] ?? name}
+                              title={TOOL_TITLES[name] ? t(TOOL_TITLES[name]) : name}
                             />
                             <ToolContent>
                               <ToolInput input={tp.input} />
@@ -417,11 +412,11 @@ function TestChat() {
                       return null;
                     })}
                     {message.role === "assistant" && !hasText && busy && (
-                      <Shimmer className="text-sm">Manbalar tekshirilmoqda...</Shimmer>
+                      <Shimmer className="text-sm">{t("test.checking")}</Shimmer>
                     )}
                     {sources.length > 0 && hasText && (
                       <div className="flex flex-wrap items-center gap-1.5 border-t pt-2">
-                        <span className="text-[11px] font-medium text-muted-foreground">Manbalar:</span>
+                        <span className="text-[11px] font-medium text-muted-foreground">{t("test.sources")}</span>
                         {sources.map((s) => (
                           <span
                             key={s.label}
@@ -447,7 +442,7 @@ function TestChat() {
           {status === "submitted" && (
             <Message from="assistant">
               <MessageContent>
-                <Shimmer className="text-sm">O'ylamoqda...</Shimmer>
+                <Shimmer className="text-sm">{t("test.thinking")}</Shimmer>
               </MessageContent>
             </Message>
           )}
@@ -457,7 +452,7 @@ function TestChat() {
 
       <div className="border-t p-3">
         <PromptInput onSubmit={(msg) => submit(msg.text)}>
-          <PromptInputTextarea placeholder="Mijoz sifatida yozing yoki ovozli xabar yuboring..." autoFocus />
+          <PromptInputTextarea placeholder={t("test.placeholder")} autoFocus />
           <PromptInputFooter className="justify-between">
             <VoiceRecordButton
               allowUpload
