@@ -16,6 +16,7 @@ import { CHANNEL_LABELS, CHANNELS, type Channel } from "@/lib/agent-rules";
 import { simulateNewConversation } from "@/lib/inbox.functions";
 import { channelsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/context";
 import type { VoiceTranscript } from "@/lib/voice";
 import { VoiceRecordButton } from "@/components/voice-input";
 
@@ -32,11 +33,11 @@ export const Route = createFileRoute("/_authenticated/channels")({
   component: ChannelsPage,
 });
 
-const REQUIREMENTS: Record<Channel, string> = {
-  telegram: "@BotFather orqali yaratilgan bot kerak. Bot ulanganda xabarlar Inbox'ga to'g'ridan-to'g'ri tushadi.",
-  instagram: "Instagram Business akkaunt va Meta'ning ruxsati (app review) kerak. Direct xabarlar Inbox'ga keladi.",
-  whatsapp: "WhatsApp Business akkaunt va telefon raqami kerak. Meta tasdig'idan so'ng ulanadi.",
-};
+const REQUIREMENTS = {
+  telegram: "channels.req.telegram",
+  instagram: "channels.req.instagram",
+  whatsapp: "channels.req.whatsapp",
+} as const satisfies Record<Channel, string>;
 
 const COLORS: Record<Channel, string> = {
   telegram: "bg-telegram",
@@ -49,6 +50,7 @@ function ChannelsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const simulate = useServerFn(simulateNewConversation);
+  const { t } = useI18n();
   const [form, setForm] = useState({
     channel: "telegram" as Channel,
     contactName: "Dilshod Karimov",
@@ -59,7 +61,7 @@ function ChannelsPage() {
 
   async function send(voice?: VoiceTranscript) {
     const text = voice ? voice.transcript : form.text;
-    if (!form.contactName.trim() || !text.trim()) { toast.error("Ism va xabarni kiriting"); return; }
+    if (!form.contactName.trim() || !text.trim()) { toast.error(t("channels.needNameText")); return; }
     setSending(true);
     try {
       const result = await simulate({
@@ -72,12 +74,12 @@ function ChannelsPage() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      if (result.outcome === "ai_error") toast.error(result.message ?? "AI xatosi");
-      else if (result.outcome === "agent_offline") toast.info("Agent o'chiq — xabar operatorni kutmoqda");
-      else toast.success(result.outcome === "handover" ? "Xabar operatorga uzatildi" : "AI agent javob berdi");
+      if (result.outcome === "ai_error") toast.error(result.message ?? t("common.aiError"));
+      else if (result.outcome === "agent_offline") toast.info(t("channels.offline"));
+      else toast.success(result.outcome === "handover" ? t("channels.handedOver") : t("channels.aiReplied"));
       navigate({ to: "/inbox", search: { c: result.conversationId } });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Yuborilmadi");
+      toast.error(e instanceof Error ? e.message : t("channels.failed"));
     } finally {
       setSending(false);
     }
@@ -86,8 +88,8 @@ function ChannelsPage() {
   return (
     <div>
       <PageHeader
-        title="Kanallar"
-        description="Mijozlar yozadigan messenjerlar. Hozir demo rejimida ishlayapti — haqiqiy akkauntlarni ulash keyingi bosqich."
+        title={t("channels.title")}
+        description={t("channels.description")}
       />
       <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
         <div className="space-y-4">
@@ -103,35 +105,30 @@ function ChannelsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-display text-lg font-semibold">{CHANNEL_LABELS[ch]}</span>
                     {status === "connected" ? (
-                      <Badge className="bg-success text-primary-foreground">Ulangan</Badge>
+                      <Badge className="bg-success text-primary-foreground">{t("channels.connected")}</Badge>
                     ) : status === "demo" ? (
-                      <Badge variant="secondary">Demo rejim</Badge>
+                      <Badge variant="secondary">{t("channels.demo")}</Badge>
                     ) : (
-                      <Badge variant="outline">Ulanmagan</Badge>
+                      <Badge variant="outline">{t("channels.disconnected")}</Badge>
                     )}
                     {conn?.account_name && <span className="text-sm text-muted-foreground">{conn.account_name}</span>}
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{REQUIREMENTS[ch]}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t(REQUIREMENTS[ch])}</p>
                 </div>
               </div>
             );
           })}
           <div className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
-            Haqiqiy kanallarni ulash uchun: Telegram — bot tokeni, WhatsApp — Business akkaunt, Instagram — Meta
-            Business ruxsati. Ulangandan so'ng xabarlar avtomatik Inbox'ga tushadi va AI agent xuddi sinovdagidek javob
-            beradi.
+            {t("channels.howTo")}
           </div>
         </div>
 
         <div className="h-fit space-y-4 rounded-2xl border bg-card p-5">
           <div className="flex items-center gap-2">
             <FlaskConical className="size-5 text-primary" />
-            <h2 className="font-display text-lg font-semibold">Kiruvchi xabarni sinash</h2>
+            <h2 className="font-display text-lg font-semibold">{t("channels.simTitle")}</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Mijoz kanaldan yozganini simulyatsiya qiling. Xabar Inbox'ga tushadi va agent jonli efirda bo'lsa, darhol
-            javob beradi.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("channels.simText")}</p>
           <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
             {CHANNELS.map((ch) => (
               <button
@@ -148,11 +145,11 @@ function ChannelsPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="sim-name">Mijoz ismi</Label>
+              <Label htmlFor="sim-name">{t("channels.simName")}</Label>
               <Input id="sim-name" value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="sim-handle">{form.channel === "whatsapp" ? "Telefon" : "Username"}</Label>
+              <Label htmlFor="sim-handle">{form.channel === "whatsapp" ? t("channels.simPhone") : t("channels.simUsername")}</Label>
               <Input
                 id="sim-handle"
                 value={form.contactHandle}
@@ -161,22 +158,17 @@ function ChannelsPage() {
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="sim-text">Xabar</Label>
+            <Label htmlFor="sim-text">{t("channels.simMessage")}</Label>
             <Textarea id="sim-text" rows={3} value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Maslahat: username CRM'dagi mijozga mos kelsa (masalan @dilshod_k), agent uni avtomatik taniydi.
-          </p>
+          <p className="text-xs text-muted-foreground">{t("channels.simTip")}</p>
           <div className="flex items-center gap-2">
             <Button className="flex-1" onClick={() => void send()} disabled={sending}>
-              {sending ? "Agent javob bermoqda..." : "Xabar yuborish"}
+              {sending ? t("channels.sending") : t("channels.send")}
             </Button>
             <VoiceRecordButton allowUpload disabled={sending} onTranscribed={(v) => send(v)} />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Ovozli xabar: mikrofon bilan yozing yoki Telegram/WhatsApp'dan olingan audio faylni yuklang. Agent o'zbek
-            shevalari, qoraqalpoq, rus, qozoq va boshqa tillarni tushunib, o'sha tilda javob beradi.
-          </p>
+          <p className="text-xs text-muted-foreground">{t("channels.voiceTip")}</p>
         </div>
       </div>
     </div>
