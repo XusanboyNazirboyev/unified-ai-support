@@ -395,12 +395,13 @@ function TestChat() {
                       if (part.type.startsWith("tool-")) {
                         const tp = part as ToolPart;
                         const name = tp.type.slice(5);
+                        const titleKey = TOOL_TITLES[name];
                         return (
                           <Tool key={i} defaultOpen={false} className="mb-0">
                             <ToolHeader
                               type={tp.type as `tool-${string}`}
                               state={tp.state}
-                              title={TOOL_TITLES[name] ? t(TOOL_TITLES[name]) : name}
+                              title={titleKey ? t(titleKey) : name}
                             />
                             <ToolContent>
                               <ToolInput input={tp.input} />
