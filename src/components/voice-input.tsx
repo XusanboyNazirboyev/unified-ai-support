@@ -5,9 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/context";
 import {
-  CONFIDENCE_LABELS,
-  LANGUAGE_LABELS,
   MAX_VOICE_BYTES,
   MAX_VOICE_SECONDS,
   voiceNeedsConfirmation,
@@ -16,8 +15,10 @@ import {
 } from "@/lib/voice";
 import { recordWav, type WavRecording } from "@/lib/voice-recorder";
 
+class TooLargeError extends Error {}
+
 export async function requestTranscription(file: File): Promise<VoiceTranscript> {
-  if (file.size > MAX_VOICE_BYTES) throw new Error("Audio juda katta (ko'pi bilan 10 MB / 3 daqiqa)");
+  if (file.size > MAX_VOICE_BYTES) throw new TooLargeError("too_large");
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   const form = new FormData();
@@ -28,7 +29,7 @@ export async function requestTranscription(file: File): Promise<VoiceTranscript>
     body: form,
   });
   const json = (await response.json().catch(() => null)) as (VoiceTranscript & { error?: string }) | null;
-  if (!response.ok || !json || json.error) throw new Error(json?.error ?? "Ovozli xabarni tushunib bo'lmadi");
+  if (!response.ok || !json || json.error) throw new Error(json?.error ?? "");
   return json;
 }
 
@@ -48,6 +49,7 @@ export function VoiceRecordButton({
   allowUpload?: boolean;
   className?: string;
 }) {
+  const { t } = useI18n();
   const [state, setState] = useState<"idle" | "recording" | "transcribing">("idle");
   const [seconds, setSeconds] = useState(0);
   const recRef = useRef<WavRecording | null>(null);
@@ -67,7 +69,8 @@ export function VoiceRecordButton({
     try {
       await onTranscribed(await requestTranscription(file));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Ovozli xabarni tushunib bo'lmadi");
+      if (e instanceof TooLargeError) toast.error(t("voice.tooLarge"));
+      else toast.error(e instanceof Error && e.message ? e.message : t("voice.failed"));
     } finally {
       setState("idle");
     }
@@ -77,7 +80,7 @@ export function VoiceRecordButton({
     try {
       recRef.current = await recordWav();
     } catch {
-      toast.error("Mikrofonga ruxsat berilmadi. Brauzer sozlamalarida ruxsat bering.");
+      toast.error(t("voice.micDenied"));
       return;
     }
     setSeconds(0);
@@ -99,7 +102,7 @@ export function VoiceRecordButton({
     try {
       await process(await rec.stop());
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Yozib bo'lmadi");
+      toast.error(e instanceof Error && e.message ? e.message : t("voice.recordFailed"));
       setState("idle");
     }
   }
@@ -119,10 +122,10 @@ export function VoiceRecordButton({
           <span className="size-2 animate-pulse rounded-full bg-destructive" />
           {mmss(seconds)}
         </span>
-        <Button type="button" size="icon" variant="ghost" onClick={cancel} aria-label="Yozuvni bekor qilish">
+        <Button type="button" size="icon" variant="ghost" onClick={cancel} aria-label={t("voice.cancel")}>
           <X className="size-4" />
         </Button>
-        <Button type="button" size="icon" variant="destructive" onClick={() => void stop()} aria-label="Yozuvni yuborish">
+        <Button type="button" size="icon" variant="destructive" onClick={() => void stop()} aria-label={t("voice.send")}>
           <Square className="size-3.5 fill-current" />
         </Button>
       </div>
@@ -150,8 +153,8 @@ export function VoiceRecordButton({
             variant="ghost"
             disabled={disabled || state !== "idle"}
             onClick={() => fileRef.current?.click()}
-            aria-label="Audio fayl yuklash"
-            title="Audio fayl yuklash (ogg, mp3, m4a, wav)"
+            aria-label={t("voice.upload")}
+            title={t("voice.uploadTitle")}
           >
             <Upload className="size-4" />
           </Button>
@@ -163,8 +166,8 @@ export function VoiceRecordButton({
         variant="ghost"
         disabled={disabled || state !== "idle"}
         onClick={() => void start()}
-        aria-label="Ovozli xabar yozish"
-        title="Ovozli xabar yozish"
+        aria-label={t("voice.record")}
+        title={t("voice.record")}
       >
         {state === "transcribing" ? <Loader2 className="size-4 animate-spin" /> : <Mic className="size-4" />}
       </Button>
@@ -174,6 +177,7 @@ export function VoiceRecordButton({
 
 /** Small label under a voice message: language, dialect and how sure the transcription is. */
 export function VoiceBadge({ meta, className }: { meta: VoiceMeta | null; className?: string }) {
+  const { t } = useI18n();
   const warn = meta ? voiceNeedsConfirmation(meta) : false;
   return (
     <span
@@ -182,16 +186,16 @@ export function VoiceBadge({ meta, className }: { meta: VoiceMeta | null; classN
         warn ? "text-warning-foreground" : "opacity-80",
         className,
       )}
-      title={meta?.unclear_parts.length ? `Noaniq: ${meta.unclear_parts.join(", ")}` : undefined}
+      title={meta?.unclear_parts.length ? t("voice.unclear", { parts: meta.unclear_parts.join(", ") }) : undefined}
     >
-      <Mic className="size-3" /> Ovozli xabar
+      <Mic className="size-3" /> {t("voice.badge")}
       {meta && (
         <>
           {" · "}
-          {LANGUAGE_LABELS[meta.language]}
+          {t(`voice.lang.${meta.language}` as const)}
           {meta.dialect ? ` (${meta.dialect})` : ""}
           {" · "}
-          {warn ? "tasdiqlash kerak" : CONFIDENCE_LABELS[meta.confidence]}
+          {warn ? t("voice.needsConfirm") : t(`voice.conf.${meta.confidence}` as const)}
         </>
       )}
     </span>

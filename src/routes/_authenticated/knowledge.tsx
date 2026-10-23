@@ -75,7 +75,7 @@ function KnowledgePage() {
 
   const label = (value: string) => {
     const cat = KB_CATEGORIES.find((c) => c.value === value);
-    return cat ? t(`kb.cat.${cat.value}`) : value;
+    return cat ? t(`kb.cat.${cat.value}` as const) : value;
   };
 
   return (
