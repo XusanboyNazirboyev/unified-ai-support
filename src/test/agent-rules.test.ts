@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   detectHandoverKeyword,
+  isHandoverAllowed,
   phonesMatch,
   normalizeOrderNumber,
   rankKbArticles,
@@ -45,5 +46,23 @@ describe("knowledge base search", () => {
 
   it("finds the payment article for a Payme question", () => {
     expect(rankKbArticles("Payme orqali to'lasam bo'ladimi", articles)[0]?.id).toBe("2");
+  });
+});
+
+describe("operator handover", () => {
+  it("does not transfer just because the answer is missing", () => {
+    expect(isHandoverAllowed("info_missing")).toBe(false);
+  });
+
+  it("transfers when the customer asks for a person", () => {
+    expect(isHandoverAllowed("customer_asked")).toBe(true);
+  });
+
+  it("transfers when the customer accepts the operator offer", () => {
+    expect(isHandoverAllowed("customer_agreed")).toBe(true);
+  });
+
+  it("transfers on a complaint", () => {
+    expect(isHandoverAllowed("complaint")).toBe(true);
   });
 });

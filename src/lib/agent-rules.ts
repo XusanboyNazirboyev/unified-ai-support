@@ -114,3 +114,21 @@ export function formatSum(value: number | string, currency = "UZS"): string {
 }
 
 export type MessageSource = { type: "kb" | "crm"; label: string };
+
+/**
+ * Why the agent wants to transfer a chat to a human.
+ * - customer_asked: the customer explicitly asked for a person / operator
+ * - customer_agreed: the agent offered an operator and the customer said yes
+ * - complaint: complaint, defect, refund dispute or an upset customer
+ * - info_missing: the agent simply could not find the answer
+ */
+export const HANDOVER_KINDS = ["customer_asked", "customer_agreed", "complaint", "info_missing"] as const;
+export type HandoverKind = (typeof HANDOVER_KINDS)[number];
+
+/**
+ * The agent answers as much as it can itself: missing information alone never transfers the chat.
+ * It must first share what it knows and offer an operator; the transfer happens once the customer agrees.
+ */
+export function isHandoverAllowed(kind: HandoverKind): boolean {
+  return kind !== "info_missing";
+}
