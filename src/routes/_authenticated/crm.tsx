@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatSum, normalizeOrderNumber, ORDER_STATUSES } from "@/lib/agent-rules";
 import { customersQuery, ordersQuery } from "@/lib/queries";
+import { useI18n } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   head: () => ({
@@ -35,11 +36,11 @@ export const Route = createFileRoute("/_authenticated/crm")({
 });
 
 const PROVIDERS = [
-  { name: "Ichki CRM", note: "Faol · Javobchi ichida", active: true },
-  { name: "amoCRM", note: "Keyingi bosqichda", active: false },
-  { name: "Bitrix24", note: "Keyingi bosqichda", active: false },
-  { name: "HubSpot", note: "Keyingi bosqichda", active: false },
-];
+  { name: null, active: true },
+  { name: "amoCRM", active: false },
+  { name: "Bitrix24", active: false },
+  { name: "HubSpot", active: false },
+] as const;
 
 function statusVariant(status: string) {
   if (status === "yetkazildi") return "bg-success/15 text-success";
@@ -52,6 +53,7 @@ function CrmPage() {
   const queryClient = useQueryClient();
   const { data: customers } = useSuspenseQuery(customersQuery);
   const { data: orders } = useSuspenseQuery(ordersQuery);
+  const { t, orderStatus } = useI18n();
   const [customerOpen, setCustomerOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [cForm, setCForm] = useState({ full_name: "", phone: "", telegram_username: "", instagram_handle: "", city: "" });
@@ -60,7 +62,7 @@ function CrmPage() {
   const nameOf = (id: string) => customers.find((c) => c.id === id)?.full_name ?? "—";
 
   async function addCustomer() {
-    if (!cForm.full_name.trim() || !cForm.phone.trim()) { toast.error("Ism va telefonni kiriting"); return; }
+    if (!cForm.full_name.trim() || !cForm.phone.trim()) { toast.error(t("crm.needNamePhone")); return; }
     const { error } = await supabase.from("crm_customers").insert({
       full_name: cForm.full_name.trim(),
       phone: cForm.phone.trim(),
@@ -70,14 +72,14 @@ function CrmPage() {
       city: cForm.city.trim() || null,
     });
     if (error) { toast.error(error.message); return; }
-    toast.success("Mijoz qo'shildi");
+    toast.success(t("crm.customerAdded"));
     setCustomerOpen(false);
     setCForm({ full_name: "", phone: "", telegram_username: "", instagram_handle: "", city: "" });
     queryClient.invalidateQueries({ queryKey: ["crm_customers"] });
   }
 
   async function addOrder() {
-    if (!oForm.customer_id || !oForm.order_number.trim()) { toast.error("Mijoz va buyurtma raqamini kiriting"); return; }
+    if (!oForm.customer_id || !oForm.order_number.trim()) { toast.error(t("crm.needCustomerOrder")); return; }
     const { error } = await supabase.from("crm_orders").insert({
       customer_id: oForm.customer_id,
       order_number: normalizeOrderNumber(oForm.order_number),
@@ -86,7 +88,7 @@ function CrmPage() {
       expected_delivery: oForm.expected_delivery || null,
     });
     if (error) { toast.error(error.message); return; }
-    toast.success("Buyurtma qo'shildi");
+    toast.success(t("crm.orderAdded"));
     setOrderOpen(false);
     setOForm({ customer_id: "", order_number: "", items: "", total: "", expected_delivery: "" });
     queryClient.invalidateQueries({ queryKey: ["crm_orders"] });
@@ -95,31 +97,31 @@ function CrmPage() {
   async function setStatus(id: string, status: string) {
     const { error } = await supabase.from("crm_orders").update({ status }).eq("id", id);
     if (error) { toast.error(error.message); return; }
-    toast.success("Status yangilandi — AI agent endi yangi statusni aytadi");
+    toast.success(t("crm.statusUpdated"));
     queryClient.invalidateQueries({ queryKey: ["crm_orders"] });
   }
 
   return (
     <div>
       <PageHeader
-        title="CRM integratsiyasi"
-        description="Buyurtma holati, yetkazish sanasi va shaxsiy ma'lumotlar haqidagi savollarga AI agent aynan shu ma'lumotlardan javob beradi."
+        title={t("crm.title")}
+        description={t("crm.description")}
       />
       <div className="space-y-6 p-6">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {PROVIDERS.map((p) => (
-            <div key={p.name} className={`rounded-2xl border p-4 ${p.active ? "border-primary bg-secondary" : "bg-card"}`}>
+            <div key={p.name ?? "internal"} className={`rounded-2xl border p-4 ${p.active ? "border-primary bg-secondary" : "bg-card"}`}>
               <div className="flex items-center justify-between">
-                <span className="font-display font-semibold">{p.name}</span>
+                <span className="font-display font-semibold">{p.name ?? t("crm.internal")}</span>
                 {p.active ? (
                   <CheckCircle2 className="size-5 text-primary" />
                 ) : (
                   <Badge variant="outline" className="text-[10px]">
-                    Tez orada
+                    {t("common.comingSoon")}
                   </Badge>
                 )}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{p.note}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{p.active ? t("crm.internalNote") : t("crm.nextStage")}</p>
             </div>
           ))}
         </div>
@@ -127,15 +129,15 @@ function CrmPage() {
         <Tabs defaultValue="orders">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <TabsList>
-              <TabsTrigger value="orders">Buyurtmalar ({orders.length})</TabsTrigger>
-              <TabsTrigger value="customers">Mijozlar ({customers.length})</TabsTrigger>
+              <TabsTrigger value="orders">{t("crm.ordersTab", { n: orders.length })}</TabsTrigger>
+              <TabsTrigger value="customers">{t("crm.customersTab", { n: customers.length })}</TabsTrigger>
             </TabsList>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setCustomerOpen(true)}>
-                <Plus className="size-4" /> Mijoz
+                <Plus className="size-4" /> {t("crm.addCustomer")}
               </Button>
               <Button onClick={() => setOrderOpen(true)}>
-                <Plus className="size-4" /> Buyurtma
+                <Plus className="size-4" /> {t("crm.addOrder")}
               </Button>
             </div>
           </div>
@@ -144,12 +146,12 @@ function CrmPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Raqam</TableHead>
-                  <TableHead>Mijoz</TableHead>
-                  <TableHead>Mahsulot</TableHead>
-                  <TableHead>Summa</TableHead>
-                  <TableHead>Yetkazish</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("crm.col.number")}</TableHead>
+                  <TableHead>{t("crm.col.customer")}</TableHead>
+                  <TableHead>{t("crm.col.product")}</TableHead>
+                  <TableHead>{t("crm.col.total")}</TableHead>
+                  <TableHead>{t("crm.col.delivery")}</TableHead>
+                  <TableHead>{t("crm.col.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -168,7 +170,7 @@ function CrmPage() {
                         <SelectContent>
                           {ORDER_STATUSES.map((s) => (
                             <SelectItem key={s} value={s}>
-                              {s}
+                              {orderStatus(s)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -184,12 +186,12 @@ function CrmPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ism</TableHead>
-                  <TableHead>Telefon</TableHead>
+                  <TableHead>{t("crm.col.name")}</TableHead>
+                  <TableHead>{t("crm.col.phone")}</TableHead>
                   <TableHead>Telegram</TableHead>
                   <TableHead>Instagram</TableHead>
-                  <TableHead>Shahar</TableHead>
-                  <TableHead>Segment</TableHead>
+                  <TableHead>{t("crm.col.city")}</TableHead>
+                  <TableHead>{t("crm.col.segment")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -214,26 +216,26 @@ function CrmPage() {
       <Dialog open={customerOpen} onOpenChange={setCustomerOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Yangi mijoz</DialogTitle>
+            <DialogTitle>{t("crm.newCustomer")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             {(
               [
-                ["full_name", "To'liq ism"],
-                ["phone", "Telefon (+998...)"],
-                ["telegram_username", "Telegram username"],
-                ["instagram_handle", "Instagram"],
-                ["city", "Shahar"],
+                ["full_name", "crm.field.fullName"],
+                ["phone", "crm.field.phone"],
+                ["telegram_username", "crm.field.telegram"],
+                ["instagram_handle", "crm.field.instagram"],
+                ["city", "crm.field.city"],
               ] as const
             ).map(([key, label]) => (
               <div key={key} className="space-y-1.5">
-                <Label htmlFor={`c-${key}`}>{label}</Label>
+                <Label htmlFor={`c-${key}`}>{t(label)}</Label>
                 <Input id={`c-${key}`} value={cForm[key]} onChange={(e) => setCForm({ ...cForm, [key]: e.target.value })} />
               </div>
             ))}
           </div>
           <DialogFooter>
-            <Button onClick={addCustomer}>Qo'shish</Button>
+            <Button onClick={addCustomer}>{t("common.add")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -241,14 +243,14 @@ function CrmPage() {
       <Dialog open={orderOpen} onOpenChange={setOrderOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Yangi buyurtma</DialogTitle>
+            <DialogTitle>{t("crm.newOrder")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label>Mijoz</Label>
+              <Label>{t("crm.field.customer")}</Label>
               <Select value={oForm.customer_id} onValueChange={(v) => setOForm({ ...oForm, customer_id: v })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Tanlang" />
+                  <SelectValue placeholder={t("crm.field.choose")} />
                 </SelectTrigger>
                 <SelectContent>
                   {customers.map((c) => (
@@ -261,25 +263,25 @@ function CrmPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="o-num">Buyurtma raqami</Label>
+                <Label htmlFor="o-num">{t("crm.field.orderNumber")}</Label>
                 <Input id="o-num" placeholder="TM-1060" value={oForm.order_number} onChange={(e) => setOForm({ ...oForm, order_number: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="o-total">Summa (so'm)</Label>
+                <Label htmlFor="o-total">{t("crm.field.total")}</Label>
                 <Input id="o-total" inputMode="numeric" value={oForm.total} onChange={(e) => setOForm({ ...oForm, total: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="o-items">Mahsulotlar</Label>
+              <Label htmlFor="o-items">{t("crm.field.items")}</Label>
               <Input id="o-items" value={oForm.items} onChange={(e) => setOForm({ ...oForm, items: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="o-date">Kutilayotgan yetkazish sanasi</Label>
+              <Label htmlFor="o-date">{t("crm.field.expected")}</Label>
               <Input id="o-date" type="date" value={oForm.expected_delivery} onChange={(e) => setOForm({ ...oForm, expected_delivery: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={addOrder}>Qo'shish</Button>
+            <Button onClick={addOrder}>{t("common.add")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

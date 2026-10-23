@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/app-shell";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { CHANNEL_LABELS, CHANNELS, type MessageSource } from "@/lib/agent-rules";
 import { analyticsQuery } from "@/lib/queries";
+import { useI18n } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/_authenticated/analytics")({
   head: () => ({
@@ -29,14 +30,14 @@ const chartConfig = {
   whatsapp: { label: "WhatsApp", color: "var(--whatsapp)" },
 } satisfies ChartConfig;
 
-function formatDuration(ms: number) {
-  if (!ms) return "—";
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
-  return `${Math.round(ms / 60_000)} daq`;
-}
-
 function AnalyticsPage() {
   const { data } = useSuspenseQuery(analyticsQuery);
+  const { t } = useI18n();
+  const formatDuration = (ms: number) => {
+    if (!ms) return "—";
+    if (ms < 60_000) return t("analytics.seconds", { n: (ms / 1000).toFixed(1) });
+    return t("analytics.minutes", { n: Math.round(ms / 60_000) });
+  };
 
   const stats = useMemo(() => {
     const { conversations, messages } = data;
@@ -66,7 +67,7 @@ function AnalyticsPage() {
     const sourceCounts = new Map<string, number>();
     for (const m of aiMsgs) {
       for (const s of (Array.isArray(m.sources) ? m.sources : []) as MessageSource[]) {
-        const key = `${s.type === "kb" ? "Baza" : "CRM"} · ${s.type === "crm" && s.label.startsWith("Buyurtma") ? "Buyurtma holati" : s.label}`;
+        const key = `${s.type === "kb" ? t("analytics.sourceKb") : "CRM"} · ${s.type === "crm" && s.label.startsWith("Buyurtma") ? t("analytics.orderStatus") : s.label}`;
         sourceCounts.set(key, (sourceCounts.get(key) ?? 0) + 1);
       }
     }
@@ -84,20 +85,20 @@ function AnalyticsPage() {
       topSources,
       byChannel,
     };
-  }, [data]);
+  }, [data, t]);
 
   const kpis = [
-    { icon: MessagesSquare, label: "Suhbatlar (14 kun)", value: String(stats.total), hint: `${stats.messages} ta xabar` },
-    { icon: Bot, label: "AI o'zi hal qilgan", value: `${stats.aiRate}%`, hint: `${stats.handed} ta operatorga uzatildi` },
-    { icon: Clock, label: "AI o'rtacha javob vaqti", value: formatDuration(stats.aiAvg), hint: "mijoz xabaridan javobgacha" },
-    { icon: Headset, label: "Operator o'rtacha javobi", value: formatDuration(stats.opAvg), hint: "inson operator" },
+    { icon: MessagesSquare, label: t("analytics.conversations"), value: String(stats.total), hint: t("analytics.messagesCount", { n: stats.messages }) },
+    { icon: Bot, label: t("analytics.aiResolved"), value: `${stats.aiRate}%`, hint: t("analytics.handedCount", { n: stats.handed }) },
+    { icon: Clock, label: t("analytics.aiAvg"), value: formatDuration(stats.aiAvg), hint: t("analytics.aiAvgHint") },
+    { icon: Headset, label: t("analytics.opAvg"), value: formatDuration(stats.opAvg), hint: t("analytics.opAvgHint") },
   ];
 
   const maxSource = stats.topSources[0]?.[1] ?? 1;
 
   return (
     <div>
-      <PageHeader title="Tahlillar" description="So'nggi 14 kun: javob tezligi, AI samaradorligi va kanallar." />
+      <PageHeader title={t("analytics.title")} description={t("analytics.description")} />
       <div className="space-y-6 p-6">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((k) => (
@@ -113,7 +114,7 @@ function AnalyticsPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <div className="rounded-2xl border bg-card p-5">
-            <h2 className="font-display text-lg font-semibold">Kunlik kiruvchi xabarlar</h2>
+            <h2 className="font-display text-lg font-semibold">{t("analytics.daily")}</h2>
             <ChartContainer config={chartConfig} className="mt-4 h-72 w-full">
               <BarChart data={stats.daily}>
                 <CartesianGrid vertical={false} />
@@ -130,7 +131,7 @@ function AnalyticsPage() {
 
           <div className="space-y-6">
             <div className="rounded-2xl border bg-card p-5">
-              <h2 className="font-display text-lg font-semibold">Kanallar ulushi</h2>
+              <h2 className="font-display text-lg font-semibold">{t("analytics.channelShare")}</h2>
               <div className="mt-4 space-y-3">
                 {stats.byChannel.map(({ ch, n }) => (
                   <div key={ch}>
@@ -149,7 +150,7 @@ function AnalyticsPage() {
               </div>
             </div>
             <div className="rounded-2xl border bg-card p-5">
-              <h2 className="font-display text-lg font-semibold">Eng ko'p ishlatilgan manbalar</h2>
+              <h2 className="font-display text-lg font-semibold">{t("analytics.topSources")}</h2>
               <div className="mt-4 space-y-2.5">
                 {stats.topSources.map(([label, n]) => (
                   <div key={label} className="text-sm">

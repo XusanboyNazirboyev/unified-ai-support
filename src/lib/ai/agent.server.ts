@@ -6,6 +6,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@/integrations/supabase/types";
 import {
   formatSum,
+  HANDOVER_KINDS,
+  isHandoverAllowed,
   normalizeOrderNumber,
   phonesMatch,
   rankKbArticles,
@@ -80,12 +82,17 @@ export function buildInstructions(
     "- If verify_customer or get_orders finds nothing for a number taken from a voice message, say you may have misheard it and ask the customer to type the number. Never tell them the order does not exist.",
     "",
     "Hard rules:",
-    "1. General questions (delivery, payment, prices, returns, warranty, address, promotions) — ALWAYS call search_knowledge_base first and answer ONLY from the returned articles. Never invent prices, dates, conditions or phone numbers.",
+    "1. General questions (delivery, payment, prices, products, returns, warranty, address, promotions) — ALWAYS call search_knowledge_base first and answer ONLY from the returned articles. Never invent prices, dates, conditions, stock or phone numbers.",
     "2. Orders, order status, delivery date and personal data — use the CRM tools (get_customer_profile, get_orders). Never guess an order status.",
     "3. Never reveal data of any customer other than the verified one.",
-    "4. If the knowledge base and CRM do not contain the answer, say you will connect a human operator and call handover_to_human. Also hand over for complaints, refunds disputes, or when the customer is upset or asks for a person.",
-    "5. Messenger style: short paragraphs, no tables, no headings, at most one emoji. Use prices exactly as written in the knowledge base.",
-    "6. Accuracy over speed: if you are not sure an answer is correct and complete, do not state it — ask a clarifying question or hand over to an operator.",
+    "4. Messenger style: short paragraphs, no tables, no headings, at most one emoji. Use prices exactly as written in the knowledge base.",
+    "5. Accuracy: if you are not sure a fact is correct, do not state it. Say honestly that you do not have that exact information.",
+    "",
+    "You are the first line of support — solve the customer's question YOURSELF whenever possible. Transferring to an operator is the last resort:",
+    "- If the first search finds nothing useful, search again with other keywords (brand, product type, topic) before concluding the information is missing.",
+    "- If the exact thing is not in the knowledge base (e.g. a phone model that is not in the price list): say briefly that you have no information about that exact item right now (never claim it does not exist), then share the closest real facts you DO have — similar products with their exact prices, payment/installment, delivery, warranty — and ask one helpful follow-up question (budget, preferred brand, memory size...). At the end you may offer: 'Agar xohlasangiz, aniq ma'lumot uchun operatorni ulab beraman.' Do NOT transfer yet.",
+    "- Call handover_to_human ONLY when: the customer explicitly asks for a person (kind=customer_asked); the customer said yes to your operator offer (kind=customer_agreed); or there is a complaint, defect, refund dispute or the customer is clearly upset (kind=complaint).",
+    "- Never tell the customer the chat was transferred unless handover_to_human returned transferred=true.",
     "",
     customerLine,
     settings.instructions ? `\nCompany instructions from the business owner:\n${settings.instructions}` : "",
@@ -127,7 +134,7 @@ export function buildAgentTools(supabase: Supa, ownerId: string, settings: Agent
         if (ranked.length === 0) {
           return {
             found: false,
-            note: "Hech narsa topilmadi. Boshqa kalit so'z bilan qayta qidiring yoki operatorga uzating.",
+            note: "Nothing matched. Search again with other Uzbek keywords from available_topics. If still nothing, tell the customer what related facts you do know and offer an operator — do not transfer unless they agree.",
             available_topics: articles.map((a) => a.title),
           };
         }
@@ -217,13 +224,25 @@ export function buildAgentTools(supabase: Supa, ownerId: string, settings: Agent
 
     handover_to_human: tool({
       description:
-        "Transfer the conversation to a human operator when the answer is not in the knowledge base/CRM, or the customer asks for a person, complains or is upset.",
+        "Transfer the conversation to a human operator. Allowed only when the customer asked for a person, agreed to your operator offer, or has a complaint / is upset. Missing information alone is NOT a reason — answer with what you know and offer an operator first.",
       inputSchema: z.object({
+        kind: z
+          .enum(HANDOVER_KINDS)
+          .describe(
+            "customer_asked = customer asked for a person; customer_agreed = customer accepted your operator offer; complaint = complaint/defect/refund dispute/upset; info_missing = you just could not find the answer",
+          ),
         reason: z.string().describe("Short reason in Uzbek for the operator"),
       }),
-      execute: async ({ reason }) => {
+      execute: async ({ kind, reason }) => {
+        if (!isHandoverAllowed(kind)) {
+          return {
+            transferred: false,
+            instruction:
+              "Not transferred. Answer the customer yourself: say you do not have that exact information, share the closest related facts from the knowledge base, ask a helpful follow-up question and offer to connect an operator if they want.",
+          };
+        }
         state.handoverReason = reason;
-        return { ok: true, note: "Operator xabardor qilindi. Mijozga operator tez orada javob berishini ayting." };
+        return { transferred: true, note: "Operator xabardor qilindi. Mijozga operator tez orada javob berishini ayting." };
       },
     }),
   };

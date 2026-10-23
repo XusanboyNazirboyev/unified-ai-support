@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { BookOpen, Bot, Database, Headset, Inbox, LineChart } from "lucide-react";
 
 import logo from "@/assets/javobchi-logo.png";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,15 +22,17 @@ export const Route = createFileRoute("/")({
 });
 
 const FEATURES = [
-  { icon: Inbox, title: "Yagona inbox", text: "Telegram, Instagram va WhatsApp suhbatlari bitta oynada." },
-  { icon: Headset, title: "Operatorga uzatish", text: "Javob topilmasa yoki mijoz so'rasa — suhbat darhol odamga o'tadi." },
-  { icon: Bot, title: "Xavfsiz sinov chati", text: "Jonli efirdan oldin agentni sinang va javob manbalarini ko'ring." },
-  { icon: BookOpen, title: "Bilimlar bazasi", text: "FAQ, narxlar, qoidalar — agent faqat shulardan javob beradi." },
-  { icon: Database, title: "CRM integratsiyasi", text: "Buyurtma statusi va mijoz ma'lumotini tasdiqlab, aniq aytadi." },
-  { icon: LineChart, title: "Tahlillar", text: "Javob tezligi, AI hal qilgan suhbatlar ulushi, kanallar." },
-];
+  { icon: Inbox, title: "landing.f1.title", text: "landing.f1.text" },
+  { icon: Headset, title: "landing.f2.title", text: "landing.f2.text" },
+  { icon: Bot, title: "landing.f3.title", text: "landing.f3.text" },
+  { icon: BookOpen, title: "landing.f4.title", text: "landing.f4.text" },
+  { icon: Database, title: "landing.f5.title", text: "landing.f5.text" },
+  { icon: LineChart, title: "landing.f6.title", text: "landing.f6.text" },
+] as const;
 
 function Landing() {
+  const { t } = useI18n();
+  const [titleBefore, titleAfter] = t("landing.title").split("{accent}");
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
@@ -36,9 +40,12 @@ function Landing() {
           <img src={logo} alt="Javobchi" width={36} height={36} className="size-9" />
           <span className="font-display text-xl font-bold">Javobchi</span>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/inbox" search={{ c: undefined }}>Panelga kirish</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <Button asChild variant="outline">
+            <Link to="/inbox" search={{ c: undefined }}>{t("landing.openPanel")}</Link>
+          </Button>
+        </div>
       </header>
 
       <section className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-2">
@@ -47,18 +54,19 @@ function Landing() {
             Telegram · Instagram · WhatsApp
           </span>
           <h1 className="mt-5 text-5xl font-extrabold leading-[1.05] md:text-6xl">
-            Mijozlarga 2 soniyada <span className="text-primary">aniq</span> javob.
+            {titleBefore}
+            <span className="text-primary">{t("landing.titleAccent")}</span>
+            {titleAfter}
           </h1>
           <p className="mt-5 max-w-lg text-lg text-muted-foreground">
-            Javobchi umumiy savollarga bilimlar bazangizdan, buyurtma va shaxsiy savollarga esa CRM'ingizdan javob
-            beradi. Bilmagan joyida — operatorga uzatadi.
+            {t("landing.lead")}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link to="/auth" search={{ redirect: undefined }}>Bepul boshlash</Link>
+              <Link to="/auth" search={{ redirect: undefined }}>{t("landing.start")}</Link>
             </Button>
             <Button asChild size="lg" variant="ghost">
-              <Link to="/agent">Sinov chatini ochish</Link>
+              <Link to="/agent">{t("landing.openTest")}</Link>
             </Button>
           </div>
         </div>
@@ -69,14 +77,14 @@ function Landing() {
           </div>
           <div className="space-y-3 text-sm">
             <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-ink-foreground/10 px-4 py-2.5">
-              Assalomu alaykum! TM-1042 buyurtmam qachon keladi?
+              {t("landing.demoQuestion")}
             </div>
             <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-accent px-4 py-2.5 text-accent-foreground">
-              Va alaykum assalom, Dilshod! TM-1042 (Samsung Galaxy A56) hozir yo'lda — ertaga yetkaziladi.
+              {t("landing.demoAnswer")}
             </div>
             <div className="flex justify-end gap-1.5 text-[11px] text-ink-foreground/60">
-              <span className="rounded bg-ink-foreground/10 px-1.5 py-0.5">CRM · Buyurtma TM-1042</span>
-              <span className="rounded bg-ink-foreground/10 px-1.5 py-0.5">Baza · Yetkazib berish</span>
+              <span className="rounded bg-ink-foreground/10 px-1.5 py-0.5">{t("landing.demoSourceOrder")}</span>
+              <span className="rounded bg-ink-foreground/10 px-1.5 py-0.5">{t("landing.demoSourceKb")}</span>
             </div>
           </div>
         </div>
@@ -86,8 +94,8 @@ function Landing() {
         {FEATURES.map((f) => (
           <div key={f.title} className="rounded-2xl border bg-card p-6">
             <f.icon className="size-6 text-primary" />
-            <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{f.text}</p>
+            <h3 className="mt-4 text-lg font-semibold">{t(f.title)}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t(f.text)}</p>
           </div>
         ))}
       </section>

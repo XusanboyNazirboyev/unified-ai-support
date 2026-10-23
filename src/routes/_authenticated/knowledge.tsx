@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { KB_CATEGORIES } from "@/lib/agent-rules";
 import { kbQuery, type KbArticle } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/_authenticated/knowledge")({
   head: () => ({
@@ -35,6 +36,7 @@ const EMPTY: Draft = { title: "", category: "faq", content: "" };
 function KnowledgePage() {
   const queryClient = useQueryClient();
   const { data: articles } = useSuspenseQuery(kbQuery);
+  const { t } = useI18n();
   const [category, setCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -47,7 +49,7 @@ function KnowledgePage() {
 
   async function save() {
     if (!draft || !draft.title.trim() || !draft.content.trim()) {
-      toast.error("Sarlavha va matnni kiriting");
+      toast.error(t("kb.needFields"));
       return;
     }
     const payload = { title: draft.title.trim(), category: draft.category, content: draft.content.trim() };
@@ -58,35 +60,38 @@ function KnowledgePage() {
           .eq("id", draft.id)
       : await supabase.from("kb_articles").insert(payload);
     if (error) { toast.error(error.message); return; }
-    toast.success(draft.id ? "Maqola yangilandi" : "Maqola qo'shildi");
+    toast.success(draft.id ? t("kb.updated") : t("kb.added"));
     setDraft(null);
     queryClient.invalidateQueries({ queryKey: ["kb_articles"] });
   }
 
   async function remove(article: KbArticle) {
-    if (!confirm(`"${article.title}" o'chirilsinmi?`)) return;
+    if (!confirm(t("kb.confirmDelete", { title: article.title }))) return;
     const { error } = await supabase.from("kb_articles").delete().eq("id", article.id);
     if (error) { toast.error(error.message); return; }
-    toast.success("O'chirildi");
+    toast.success(t("common.deleted"));
     queryClient.invalidateQueries({ queryKey: ["kb_articles"] });
   }
 
-  const label = (value: string) => KB_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+  const label = (value: string) => {
+    const cat = KB_CATEGORIES.find((c) => c.value === value);
+    return cat ? t(`kb.cat.${cat.value}` as const) : value;
+  };
 
   return (
     <div>
       <PageHeader
-        title="Bilimlar bazasi"
-        description="AI agent umumiy savollarga faqat shu yerdagi ma'lumotlar asosida javob beradi. Narx yoki qoida o'zgarsa — shu yerda yangilang."
+        title={t("kb.title")}
+        description={t("kb.description")}
         actions={
           <Button onClick={() => setDraft(EMPTY)}>
-            <Plus className="size-4" /> Yangi maqola
+            <Plus className="size-4" /> {t("kb.new")}
           </Button>
         }
       />
       <div className="space-y-4 p-6">
         <div className="flex flex-wrap items-center gap-2">
-          {[{ value: "all", label: "Barchasi" }, ...KB_CATEGORIES].map((c) => (
+          {["all", ...KB_CATEGORIES.map((c) => c.value)].map((value) => ({ value, label: value === "all" ? t("common.all") : label(value) })).map((c) => (
             <button
               key={c.value}
               onClick={() => setCategory(c.value)}
@@ -103,7 +108,7 @@ function KnowledgePage() {
           ))}
           <div className="relative ml-auto w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Qidirish" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input className="pl-8" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
 
@@ -121,12 +126,12 @@ function KnowledgePage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="Tahrirlash"
+                    aria-label={t("common.edit")}
                     onClick={() => setDraft({ id: a.id, title: a.title, category: a.category, content: a.content })}
                   >
                     <Pencil className="size-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" aria-label="O'chirish" onClick={() => remove(a)}>
+                  <Button variant="ghost" size="icon" aria-label={t("common.delete")} onClick={() => remove(a)}>
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
@@ -136,7 +141,7 @@ function KnowledgePage() {
           ))}
           {filtered.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-              Maqolalar topilmadi
+              {t("kb.empty")}
             </div>
           )}
         </div>
@@ -145,16 +150,16 @@ function KnowledgePage() {
       <Dialog open={draft !== null} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{draft?.id ? "Maqolani tahrirlash" : "Yangi maqola"}</DialogTitle>
+            <DialogTitle>{draft?.id ? t("kb.editTitle") : t("kb.new")}</DialogTitle>
           </DialogHeader>
           {draft && (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="kb-title">Sarlavha</Label>
+                <Label htmlFor="kb-title">{t("kb.fieldTitle")}</Label>
                 <Input id="kb-title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>Bo'lim</Label>
+                <Label>{t("kb.fieldCategory")}</Label>
                 <Select value={draft.category} onValueChange={(v) => setDraft({ ...draft, category: v })}>
                   <SelectTrigger>
                     <SelectValue />
@@ -162,29 +167,29 @@ function KnowledgePage() {
                   <SelectContent>
                     {KB_CATEGORIES.map((c) => (
                       <SelectItem key={c.value} value={c.value}>
-                        {c.label}
+                        {label(c.value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="kb-content">Matn</Label>
+                <Label htmlFor="kb-content">{t("kb.fieldContent")}</Label>
                 <Textarea
                   id="kb-content"
                   rows={9}
                   value={draft.content}
                   onChange={(e) => setDraft({ ...draft, content: e.target.value })}
-                  placeholder="Aniq faktlar, narxlar va shartlarni yozing — agent aynan shularni ishlatadi."
+                  placeholder={t("kb.contentPlaceholder")}
                 />
               </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDraft(null)}>
-              Bekor qilish
+              {t("common.cancel")}
             </Button>
-            <Button onClick={save}>Saqlash</Button>
+            <Button onClick={save}>{t("common.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
