@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-quer
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { format, formatDistanceToNowStrict, isToday } from "date-fns";
-import { uz } from "date-fns/locale";
+import { enUS, ru, uz, type Locale as DateLocale } from "date-fns/locale";
 import {
   Bot,
   CheckCheck,
@@ -36,6 +36,8 @@ import {
   type Message,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/context";
+import type { Locale } from "@/lib/i18n/locales";
 import { parseVoiceMeta, type VoiceMeta, type VoiceTranscript } from "@/lib/voice";
 import { VoiceBadge, VoiceRecordButton } from "@/components/voice-input";
 
@@ -66,15 +68,18 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function shortTime(iso: string) {
+const DATE_LOCALES: Record<Locale, DateLocale> = { uz, ru, en: enUS };
+
+function shortTime(iso: string, locale: Locale) {
   const d = new Date(iso);
-  return isToday(d) ? format(d, "HH:mm") : formatDistanceToNowStrict(d, { locale: uz, addSuffix: false });
+  return isToday(d) ? format(d, "HH:mm") : formatDistanceToNowStrict(d, { locale: DATE_LOCALES[locale], addSuffix: false });
 }
 
 function InboxPage() {
   const { c: selectedId } = Route.useSearch();
   const navigate = useNavigate({ from: "/inbox" });
   const queryClient = useQueryClient();
+  const { t, locale } = useI18n();
   const { data: conversations } = useSuspenseQuery(conversationsQuery);
   const [channel, setChannel] = useState<Channel | "all">("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -124,13 +129,13 @@ function InboxPage() {
       <section className={cn("flex w-full flex-col border-r bg-card md:w-80 lg:w-96", selected && "hidden md:flex")}>
         <div className="space-y-3 border-b p-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">Inbox</h1>
-            <span className="text-xs text-muted-foreground">{counts.pending} ta operator kutmoqda</span>
+            <h1 className="text-xl font-bold">{t("inbox.title")}</h1>
+            <span className="text-xs text-muted-foreground">{t("inbox.waiting", { n: counts.pending })}</span>
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Ism yoki xabar bo'yicha qidirish"
+              placeholder={t("inbox.searchPlaceholder")}
               className="pl-8"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -146,17 +151,17 @@ function InboxPage() {
                   channel === ch ? "border-foreground bg-foreground text-background" : "hover:bg-muted",
                 )}
               >
-                {ch === "all" ? "Barchasi" : CHANNEL_LABELS[ch]}
+                {ch === "all" ? t("common.all") : CHANNEL_LABELS[ch]}
               </button>
             ))}
           </div>
           <div className="grid grid-cols-4 rounded-lg bg-muted p-0.5 text-[11px] font-medium">
             {(
               [
-                ["all", "Hammasi"],
-                ["pending", "Kutmoqda"],
-                ["open", "Ochiq"],
-                ["resolved", "Hal qilingan"],
+                ["all", "inbox.filter.all"],
+                ["pending", "inbox.filter.pending"],
+                ["open", "inbox.filter.open"],
+                ["resolved", "inbox.filter.resolved"],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -167,14 +172,14 @@ function InboxPage() {
                   status === key ? "bg-card shadow-sm" : "text-muted-foreground",
                 )}
               >
-                {label} <span className="text-muted-foreground">{counts[key]}</span>
+                {t(label)} <span className="text-muted-foreground">{counts[key]}</span>
               </button>
             ))}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 && (
-            <div className="p-8 text-center text-sm text-muted-foreground">Suhbatlar topilmadi</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">{t("inbox.empty")}</div>
           )}
           {filtered.map((c) => (
             <button
@@ -194,7 +199,7 @@ function InboxPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm font-semibold">{c.contact_name}</span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">{shortTime(c.last_message_at)}</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{shortTime(c.last_message_at, locale)}</span>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.last_message_preview}</p>
                 <div className="mt-1.5 flex items-center gap-1.5">
@@ -204,11 +209,11 @@ function InboxPage() {
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-full bg-warning/30 px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
-                      <Headset className="size-3" /> Operator
+                      <Headset className="size-3" /> {t("common.operator")}
                     </span>
                   )}
                   {c.status === "resolved" && (
-                    <span className="text-[10px] font-medium text-muted-foreground">Hal qilingan</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">{t("inbox.filter.resolved")}</span>
                   )}
                   {c.unread_count > 0 && (
                     <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
@@ -228,10 +233,8 @@ function InboxPage() {
       ) : (
         <div className="hidden flex-1 flex-col items-center justify-center gap-3 bg-grid text-center md:flex">
           <MessageSquareDashed className="size-10 text-muted-foreground" />
-          <p className="font-display text-lg font-semibold">Suhbatni tanlang</p>
-          <p className="max-w-xs text-sm text-muted-foreground">
-            Chapdagi ro'yxatdan suhbatni oching. AI javoblari va ularning manbalari shu yerda ko'rinadi.
-          </p>
+          <p className="font-display text-lg font-semibold">{t("inbox.pickTitle")}</p>
+          <p className="max-w-xs text-sm text-muted-foreground">{t("inbox.pickText")}</p>
         </div>
       )}
     </div>
@@ -256,6 +259,7 @@ function SourceChips({ sources }: { sources: MessageSource[] }) {
 }
 
 function MessageRow({ message }: { message: Message }) {
+  const { t } = useI18n();
   const time = format(new Date(message.created_at), "HH:mm");
   if (message.role === "system") {
     return (
@@ -291,7 +295,7 @@ function MessageRow({ message }: { message: Message }) {
       </div>
       <span className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
         {isAi ? <Bot className="size-3" /> : <Headset className="size-3" />}
-        {isAi ? "AI agent" : "Operator"} · {time}
+        {isAi ? t("common.aiAgent") : t("common.operator")} · {time}
         {isAi && message.response_ms != null && ` · ${(message.response_ms / 1000).toFixed(1)} s`}
       </span>
       {isAi && <SourceChips sources={sources} />}
@@ -303,6 +307,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
   const queryClient = useQueryClient();
   const { data: messages = [], isLoading } = useQuery(messagesQuery(conversation.id));
   const processIncoming = useServerFn(processIncomingMessage);
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [asCustomer, setAsCustomer] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -336,7 +341,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
     try {
       await runIncoming(transcript, meta);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Xabar yuborilmadi");
+      toast.error(e instanceof Error ? e.message : t("common.sendFailed"));
     } finally {
       setBusy(false);
       await refresh();
@@ -346,11 +351,11 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
   async function runIncoming(value: string, voice: VoiceMeta | null) {
     const result = await processIncoming({ data: { conversationId: conversation.id, text: value, voice } });
     const notes: Record<string, string> = {
-      handover: "Suhbat operatorga uzatildi",
-      waiting_operator: "Suhbat operator rejimida — AI javob bermaydi",
-      agent_offline: "AI agent o'chiq. Uni AI agent sahifasida yoqing",
+      handover: t("inbox.outcome.handover"),
+      waiting_operator: t("inbox.outcome.waiting"),
+      agent_offline: t("inbox.outcome.offline"),
     };
-    if (result.outcome === "ai_error") toast.error(result.message ?? "AI xatosi");
+    if (result.outcome === "ai_error") toast.error(result.message ?? t("common.aiError"));
     else if (notes[result.outcome]) toast.info(notes[result.outcome]);
   }
 
@@ -382,7 +387,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
           .eq("id", conversation.id);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Xabar yuborilmadi");
+      toast.error(e instanceof Error ? e.message : t("common.sendFailed"));
       setText(value);
     } finally {
       setBusy(false);
@@ -403,9 +408,9 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
               <ChannelBadge channel={conversation.channel} />
             </div>
             <div className="text-xs text-muted-foreground">
-              {conversation.contact_handle ?? "Kontakt"}
+              {conversation.contact_handle ?? t("inbox.contact")}
               {conversation.handover_reason && conversation.mode === "human" && (
-                <> · Uzatish sababi: {conversation.handover_reason}</>
+                <> · {t("inbox.handoverReason", { reason: conversation.handover_reason })}</>
               )}
             </div>
           </div>
@@ -414,7 +419,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
               <button
                 onClick={() =>
                   conversation.mode !== "ai" &&
-                  updateConversation({ mode: "ai", status: "open", handover_reason: null }, "AI agent qaytadan javob beradi")
+                  updateConversation({ mode: "ai", status: "open", handover_reason: null }, t("inbox.aiBack"))
                 }
                 className={cn(
                   "flex items-center gap-1 rounded-md px-2.5 py-1.5",
@@ -427,8 +432,8 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
                 onClick={() =>
                   conversation.mode !== "human" &&
                   updateConversation(
-                    { mode: "human", status: "pending", handover_reason: "Operator suhbatni o'z qo'liga oldi" },
-                    "Suhbat operatorga o'tdi",
+                    { mode: "human", status: "pending", handover_reason: t("inbox.operatorTook") },
+                    t("inbox.movedToOperator"),
                   )
                 }
                 className={cn(
@@ -436,16 +441,16 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
                   conversation.mode === "human" ? "bg-ink text-ink-foreground" : "text-muted-foreground",
                 )}
               >
-                <Headset className="size-3.5" /> Operator
+                <Headset className="size-3.5" /> {t("common.operator")}
               </button>
             </div>
             {conversation.status !== "resolved" && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => updateConversation({ status: "resolved" }, "Suhbat hal qilindi")}
+                onClick={() => updateConversation({ status: "resolved" }, t("inbox.resolved"))}
               >
-                <CheckCheck className="size-4" /> Hal qilindi
+                <CheckCheck className="size-4" /> {t("inbox.resolve")}
               </Button>
             )}
           </div>
@@ -453,13 +458,13 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
 
         <Conversation className="flex-1 bg-muted/40">
           <ConversationContent className="gap-4 px-4 py-6 md:px-8">
-            {isLoading && <Shimmer>Yuklanmoqda...</Shimmer>}
+            {isLoading && <Shimmer>{t("common.loading")}</Shimmer>}
             {messages.map((m) => (
               <MessageRow key={m.id} message={m} />
             ))}
             {busy && asCustomer && (
               <div className="ml-auto text-xs">
-                <Shimmer>AI javob tayyorlamoqda...</Shimmer>
+                <Shimmer>{t("inbox.aiTyping")}</Shimmer>
               </div>
             )}
           </ConversationContent>
@@ -468,7 +473,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
 
         <div className="border-t bg-card p-3">
           <div className="mb-2 flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Yuborish:</span>
+            <span className="text-muted-foreground">{t("inbox.sendAs")}</span>
             <button
               onClick={() => setAsCustomer(false)}
               className={cn(
@@ -476,7 +481,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
                 !asCustomer && "border-foreground bg-foreground text-background",
               )}
             >
-              <Headset className="size-3" /> Operator sifatida
+              <Headset className="size-3" /> {t("inbox.asOperator")}
             </button>
             <button
               onClick={() => setAsCustomer(true)}
@@ -485,7 +490,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
                 asCustomer && "border-foreground bg-foreground text-background",
               )}
             >
-              <UserRound className="size-3" /> Mijoz nomidan (sinov)
+              <UserRound className="size-3" /> {t("inbox.asCustomer")}
             </button>
           </div>
           <div className="flex items-end gap-2">
@@ -501,13 +506,13 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
               rows={2}
               placeholder={
                 asCustomer
-                  ? "Mijoz yozadigan xabarni kiriting — AI agent javob beradi"
-                  : "Mijozga operator sifatida javob yozing"
+                  ? t("inbox.placeholderCustomer")
+                  : t("inbox.placeholderOperator")
               }
               className="min-h-[52px] resize-none"
             />
             {asCustomer && <VoiceRecordButton allowUpload disabled={busy} onTranscribed={sendCustomerVoice} />}
-            <Button size="icon" onClick={() => void send()} disabled={busy || !text.trim()} aria-label="Yuborish">
+            <Button size="icon" onClick={() => void send()} disabled={busy || !text.trim()} aria-label={t("common.send")}>
               <SendHorizonal className="size-4" />
             </Button>
           </div>
@@ -520,6 +525,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
 }
 
 function CustomerPanel({ customerId }: { customerId: string | null }) {
+  const { t, orderStatus } = useI18n();
   const { data: customers = [] } = useQuery(customersQuery);
   const { data: orders = [] } = useQuery(ordersQuery);
   const customer = customers.find((c) => c.id === customerId);
@@ -528,12 +534,11 @@ function CustomerPanel({ customerId }: { customerId: string | null }) {
   return (
     <aside className="hidden w-72 shrink-0 overflow-y-auto border-l bg-card p-4 xl:block">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-        <Database className="size-4" /> CRM ma'lumotlari
+        <Database className="size-4" /> {t("inbox.crmTitle")}
       </h2>
       {!customer ? (
         <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-          Mijoz CRMda aniqlanmagan. AI agent buyurtma ma'lumotini berishdan oldin telefon va buyurtma raqamini so'rab
-          tasdiqlaydi.
+          {t("inbox.crmUnknown")}
         </div>
       ) : (
         <div className="space-y-4">
@@ -550,15 +555,15 @@ function CustomerPanel({ customerId }: { customerId: string | null }) {
             {customer.notes && <p className="mt-2 text-xs">{customer.notes}</p>}
           </div>
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Buyurtmalar</div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("inbox.orders")}</div>
             <div className="space-y-2">
-              {customerOrders.length === 0 && <div className="text-xs text-muted-foreground">Buyurtmalar yo'q</div>}
+              {customerOrders.length === 0 && <div className="text-xs text-muted-foreground">{t("inbox.noOrders")}</div>}
               {customerOrders.map((o) => (
                 <div key={o.id} className="rounded-lg border p-2.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">{o.order_number}</span>
                     <Badge variant="secondary" className="text-[10px]">
-                      {o.status}
+                      {orderStatus(o.status)}
                     </Badge>
                   </div>
                   <div className="mt-1 text-muted-foreground">{o.items}</div>
