@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { FlaskConical } from "lucide-react";
+import { ExternalLink, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app-shell";
@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CHANNEL_LABELS, CHANNELS, type Channel } from "@/lib/agent-rules";
 import { simulateNewConversation } from "@/lib/inbox.functions";
 import { channelsQuery } from "@/lib/queries";
+import { connectTelegramBot, disconnectTelegramBot, getTelegramBot } from "@/lib/telegram.functions";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/context";
 import type { VoiceTranscript } from "@/lib/voice";
@@ -114,6 +115,7 @@ function ChannelsPage() {
                     {conn?.account_name && <span className="text-sm text-muted-foreground">{conn.account_name}</span>}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{t(REQUIREMENTS[ch])}</p>
+                  {ch === "telegram" && <TelegramConnect />}
                 </div>
               </div>
             );
@@ -169,6 +171,111 @@ function ChannelsPage() {
             <VoiceRecordButton allowUpload disabled={sending} onTranscribed={(v) => send(v)} />
           </div>
           <p className="text-xs text-muted-foreground">{t("channels.voiceTip")}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const TG_ERRORS = {
+  invalid_token: "channels.tg.err.invalid_token",
+  no_public_url: "channels.tg.err.no_public_url",
+  bot_in_use: "channels.tg.err.bot_in_use",
+  telegram_failed: "channels.tg.err.telegram_failed",
+} as const;
+
+function TelegramConnect() {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const fetchBot = useServerFn(getTelegramBot);
+  const connect = useServerFn(connectTelegramBot);
+  const disconnect = useServerFn(disconnectTelegramBot);
+  const { data: bot, isLoading } = useQuery({ queryKey: ["telegram_bot"], queryFn: () => fetchBot() });
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function refresh() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["telegram_bot"] }),
+      queryClient.invalidateQueries({ queryKey: ["channel_connections"] }),
+    ]);
+  }
+
+  async function onConnect() {
+    if (!token.trim()) return;
+    setBusy(true);
+    try {
+      const res = await connect({ data: { token: token.trim(), origin: window.location.origin } });
+      if (res.ok) {
+        toast.success(t("channels.tg.connectedOk", { name: res.username }));
+        setToken("");
+      } else {
+        toast.error(t(TG_ERRORS[res.error as keyof typeof TG_ERRORS] ?? "channels.tg.err.telegram_failed"));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("channels.failed"));
+    } finally {
+      setBusy(false);
+      await refresh();
+    }
+  }
+
+  async function onDisconnect() {
+    if (!window.confirm(t("channels.tg.disconnectConfirm"))) return;
+    setBusy(true);
+    try {
+      await disconnect();
+      toast.success(t("channels.tg.disconnectedOk"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("channels.failed"));
+    } finally {
+      setBusy(false);
+      await refresh();
+    }
+  }
+
+  if (isLoading) return null;
+
+  if (bot) {
+    return (
+      <div className="mt-3 space-y-3 rounded-xl bg-muted/60 p-3 text-sm">
+        <p>{t("channels.tg.live")}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="secondary">
+            <a href={`https://t.me/${bot.bot_username}`} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-3.5" /> {t("channels.tg.openBot")} @{bot.bot_username}
+            </a>
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void onDisconnect()} disabled={busy}>
+            {t("channels.tg.disconnect")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3 rounded-xl bg-muted/60 p-3 text-sm">
+      <p className="font-medium">{t("channels.tg.title")}</p>
+      <ol className="space-y-1 text-muted-foreground">
+        <li>{t("channels.tg.step1")}</li>
+        <li>{t("channels.tg.step2")}</li>
+        <li>{t("channels.tg.step3")}</li>
+      </ol>
+      <div className="space-y-1.5">
+        <Label htmlFor="tg-token">{t("channels.tg.tokenLabel")}</Label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="tg-token"
+            type="password"
+            autoComplete="off"
+            placeholder="123456789:AA..."
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+          <Button onClick={() => void onConnect()} disabled={busy || !token.trim()}>
+            {busy ? t("channels.tg.connecting") : t("channels.tg.connect")}
+          </Button>
         </div>
       </div>
     </div>

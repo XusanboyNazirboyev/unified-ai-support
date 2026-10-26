@@ -299,6 +299,11 @@ function MessageRow({ message }: { message: Message }) {
         {isAi ? t("common.aiAgent") : t("common.operator")} · {time}
         {isAi && message.response_ms != null && ` · ${(message.response_ms / 1000).toFixed(1)} s`}
       </span>
+      {message.delivery_error && (
+        <span className="text-[10px] font-medium text-destructive" title={message.delivery_error}>
+          {t("inbox.notDeliveredShort")}
+        </span>
+      )}
       {isAi && <SourceChips sources={sources} />}
     </div>
   );

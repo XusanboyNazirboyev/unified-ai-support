@@ -268,9 +268,9 @@ export const en: Messages = {
   "channels.tg.connectedOk": "Telegram bot connected: @{name}",
   "channels.tg.disconnectedOk": "Telegram bot disconnected",
   "channels.tg.err.invalid_token": "Wrong token. Copy the full token from BotFather.",
-  "channels.tg.err.no_public_url": "The bot can\"t be connected from this address. Open the app from the preview or the published site.",
+  "channels.tg.err.no_public_url": "The bot can't be connected from this address. Open the app from the preview or the published site.",
   "channels.tg.err.bot_in_use": "This bot is already connected to another account.",
-  "channels.tg.err.telegram_failed": "Couldn\"t reach Telegram. Please try again shortly.",
+  "channels.tg.err.telegram_failed": "Couldn't reach Telegram. Please try again shortly.",
 
   "analytics.title": "Analytics",
   "analytics.description": "Last 14 days: response speed, AI performance and channels.",
