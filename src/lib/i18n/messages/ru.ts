@@ -256,7 +256,7 @@ export const ru: Messages = {
   "inbox.notDeliveredShort": "Клиенту не доставлено",
   "channels.tg.title": "Подключить Telegram-бота",
   "channels.tg.step1": "1. Откройте @BotFather в Telegram и отправьте команду /newbot.",
-  "channels.tg.step2": `2. Задайте имя и username бота (должен заканчиваться на "bot").`,
+  "channels.tg.step2": "2. Задайте имя и username бота (должен заканчиваться на \"bot\").",
   "channels.tg.step3": "3. Скопируйте токен от BotFather и вставьте сюда.",
   "channels.tg.tokenLabel": "Токен бота",
   "channels.tg.connect": "Подключить",
