@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CHANNEL_LABELS, CHANNELS, formatSum, type Channel, type MessageSource } from "@/lib/agent-rules";
 import { processIncomingMessage } from "@/lib/inbox.functions";
+import { sendOperatorMessage } from "@/lib/telegram.functions";
 import {
   conversationsQuery,
   customersQuery,
@@ -298,6 +299,11 @@ function MessageRow({ message }: { message: Message }) {
         {isAi ? t("common.aiAgent") : t("common.operator")} · {time}
         {isAi && message.response_ms != null && ` · ${(message.response_ms / 1000).toFixed(1)} s`}
       </span>
+      {message.delivery_error && (
+        <span className="text-[10px] font-medium text-destructive" title={message.delivery_error}>
+          {t("inbox.notDeliveredShort")}
+        </span>
+      )}
       {isAi && <SourceChips sources={sources} />}
     </div>
   );
@@ -307,6 +313,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
   const queryClient = useQueryClient();
   const { data: messages = [], isLoading } = useQuery(messagesQuery(conversation.id));
   const processIncoming = useServerFn(processIncomingMessage);
+  const sendOperator = useServerFn(sendOperatorMessage);
   const { t } = useI18n();
   const [text, setText] = useState("");
   const [asCustomer, setAsCustomer] = useState(false);
@@ -368,23 +375,8 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
       if (asCustomer) {
         await runIncoming(value, null);
       } else {
-        const lastCustomer = [...messages].reverse().find((m) => m.role === "customer");
-        const { error } = await supabase.from("messages").insert({
-          conversation_id: conversation.id,
-          role: "operator",
-          content: value,
-          response_ms: lastCustomer ? Date.now() - new Date(lastCustomer.created_at).getTime() : null,
-        });
-        if (error) throw error;
-        await supabase
-          .from("conversations")
-          .update({
-            mode: "human",
-            status: "open",
-            last_message_preview: value.slice(0, 140),
-            last_message_at: new Date().toISOString(),
-          })
-          .eq("id", conversation.id);
+        const res = await sendOperator({ data: { conversationId: conversation.id, text: value } });
+        if (!res.delivered) toast.error(t("inbox.notDelivered", { error: res.deliveryError ?? "" }));
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("common.sendFailed"));
