@@ -20,6 +20,7 @@ import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authenticated/knowledge'
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent-chat'
 import { Route as ApiVoiceTranscribeRouteImport } from './routes/api/voice-transcribe'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -75,6 +76,12 @@ const ApiVoiceTranscribeRoute = ApiVoiceTranscribeRouteImport.update({
   path: '/api/voice-transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/api/agent-chat'
     | '/api/voice-transcribe'
+    | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/api/agent-chat'
     | '/api/voice-transcribe'
+    | '/api/public/telegram/webhook'
   id:
     | '__root__'
     | '/'
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
     | '/_authenticated/knowledge'
     | '/api/agent-chat'
     | '/api/voice-transcribe'
+    | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -160,6 +173,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
   ApiVoiceTranscribeRoute: typeof ApiVoiceTranscribeRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -241,6 +255,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVoiceTranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -271,6 +292,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
   ApiVoiceTranscribeRoute: ApiVoiceTranscribeRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
