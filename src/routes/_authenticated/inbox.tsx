@@ -308,6 +308,7 @@ function Thread({ conversation, onBack }: { conversation: Conv; onBack: () => vo
   const queryClient = useQueryClient();
   const { data: messages = [], isLoading } = useQuery(messagesQuery(conversation.id));
   const processIncoming = useServerFn(processIncomingMessage);
+  const sendOperator = useServerFn(sendOperatorMessage);
   const { t } = useI18n();
   const [text, setText] = useState("");
   const [asCustomer, setAsCustomer] = useState(false);
