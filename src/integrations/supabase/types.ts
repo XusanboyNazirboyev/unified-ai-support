@@ -84,6 +84,7 @@ export type Database = {
           contact_name: string
           created_at: string
           customer_id: string | null
+          external_chat_id: string | null
           handover_reason: string | null
           id: string
           last_message_at: string
@@ -99,6 +100,7 @@ export type Database = {
           contact_name: string
           created_at?: string
           customer_id?: string | null
+          external_chat_id?: string | null
           handover_reason?: string | null
           id?: string
           last_message_at?: string
@@ -114,6 +116,7 @@ export type Database = {
           contact_name?: string
           created_at?: string
           customer_id?: string | null
+          external_chat_id?: string | null
           handover_reason?: string | null
           id?: string
           last_message_at?: string
@@ -263,6 +266,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+          delivery_error: string | null
           id: string
           is_voice: boolean
           owner_id: string
@@ -275,6 +279,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string
+          delivery_error?: string | null
           id?: string
           is_voice?: boolean
           owner_id?: string
@@ -287,6 +292,7 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string
+          delivery_error?: string | null
           id?: string
           is_voice?: boolean
           owner_id?: string
@@ -304,6 +310,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      telegram_bots: {
+        Row: {
+          bot_id: number
+          bot_token: string
+          bot_username: string
+          created_at: string
+          owner_id: string
+          webhook_secret: string
+          webhook_url: string | null
+        }
+        Insert: {
+          bot_id: number
+          bot_token: string
+          bot_username: string
+          created_at?: string
+          owner_id: string
+          webhook_secret: string
+          webhook_url?: string | null
+        }
+        Update: {
+          bot_id?: number
+          bot_token?: string
+          bot_username?: string
+          created_at?: string
+          owner_id?: string
+          webhook_secret?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      telegram_updates: {
+        Row: {
+          owner_id: string
+          received_at: string
+          update_id: number
+        }
+        Insert: {
+          owner_id: string
+          received_at?: string
+          update_id: number
+        }
+        Update: {
+          owner_id?: string
+          received_at?: string
+          update_id?: number
+        }
+        Relationships: []
       }
     }
     Views: {
