@@ -280,9 +280,9 @@ export const uz = {
   "channels.tg.connectedOk": "Telegram bot ulandi: @{name}",
   "channels.tg.disconnectedOk": "Telegram bot uzildi",
   "channels.tg.err.invalid_token": "Token noto'g'ri. BotFather bergan tokenni to'liq nusxalang.",
-  "channels.tg.err.no_public_url": "Bu manzildan botni ulab bo\"lmaydi. Ilovani preview yoki nashr qilingan sahifadan oching.",
+  "channels.tg.err.no_public_url": "Bu manzildan botni ulab bo'lmaydi. Ilovani preview yoki nashr qilingan sahifadan oching.",
   "channels.tg.err.bot_in_use": "Bu bot boshqa akkauntga ulangan.",
-  "channels.tg.err.telegram_failed": "Telegram bilan bog'lanib bo\"lmadi. Birozdan so'ng qayta urinib ko'ring.",
+  "channels.tg.err.telegram_failed": "Telegram bilan bog'lanib bo'lmadi. Birozdan so'ng qayta urinib ko'ring.",
 
   // analytics
   "analytics.title": "Tahlillar",
