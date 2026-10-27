@@ -181,6 +181,39 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_integrations: {
+        Row: {
+          api_key: string
+          base_url: string
+          courses_count: number | null
+          created_at: string
+          last_error: string | null
+          last_synced_at: string | null
+          owner_id: string
+          provider: string
+        }
+        Insert: {
+          api_key: string
+          base_url: string
+          courses_count?: number | null
+          created_at?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          owner_id: string
+          provider: string
+        }
+        Update: {
+          api_key?: string
+          base_url?: string
+          courses_count?: number | null
+          created_at?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          owner_id?: string
+          provider?: string
+        }
+        Relationships: []
+      }
       crm_orders: {
         Row: {
           created_at: string

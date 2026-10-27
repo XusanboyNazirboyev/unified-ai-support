@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatSum, normalizeOrderNumber, ORDER_STATUSES } from "@/lib/agent-rules";
 import { customersQuery, ordersQuery } from "@/lib/queries";
 import { useI18n } from "@/lib/i18n/context";
+import { LearnxConnect } from "@/components/learnx-connect";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   head: () => ({
@@ -108,6 +109,7 @@ function CrmPage() {
         description={t("crm.description")}
       />
       <div className="space-y-6 p-6">
+        <LearnxConnect />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {PROVIDERS.map((p) => (
             <div key={p.name ?? "internal"} className={`rounded-2xl border p-4 ${p.active ? "border-primary bg-secondary" : "bg-card"}`}>
