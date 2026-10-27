@@ -13,6 +13,7 @@ import {
   rankKbArticles,
   type MessageSource,
 } from "@/lib/agent-rules";
+import { courseForAgent } from "@/lib/learnx-rules";
 import { createLovableAiGatewayRunIdFetch } from "./run-id.server";
 
 export const AGENT_MODEL = "openai/gpt-6-astra";
@@ -83,6 +84,7 @@ export function buildInstructions(
     "",
     "Hard rules:",
     "1. General questions (delivery, payment, prices, products, returns, warranty, address, promotions) — ALWAYS call search_knowledge_base first and answer ONLY from the returned articles. Never invent prices, dates, conditions, stock or phone numbers.",
+    "1b. Courses, course prices, duration, group start dates, lesson days and times, free seats — ALWAYS call get_course_catalog first (live data from the learning center's learnX system) and answer only from it. Copy prices, days and times exactly. If it says connected=false, use search_knowledge_base instead. If a course or time the customer wants is not listed, say so honestly and offer the closest real options.",
     "2. Orders, order status, delivery date and personal data — use the CRM tools (get_customer_profile, get_orders). Never guess an order status.",
     "3. Never reveal data of any customer other than the verified one.",
     "4. Messenger style: short paragraphs, no tables, no headings, at most one emoji. Use prices exactly as written in the knowledge base.",
@@ -142,6 +144,37 @@ export function buildAgentTools(supabase: Supa, ownerId: string, settings: Agent
           found: true,
           articles: ranked.map((a) => ({ title: a.title, category: a.category, content: a.content })),
         };
+      },
+    }),
+
+    get_course_catalog: tool({
+      description:
+        "Live course catalog from the learnX education platform: courses, monthly price, duration, open groups with start date, lesson days/times and free seats. Use for every question about courses, prices or schedules.",
+      inputSchema: z.object({
+        course: z.string().nullable().describe("Course name or topic the customer asked about (any language), or null for all courses"),
+      }),
+      execute: async ({ course }) => {
+        const { loadLearnxIntegration, fetchLearnxCatalog } = await import("@/lib/learnx.server");
+        const integration = await loadLearnxIntegration(ownerId);
+        if (!integration) return { connected: false };
+        try {
+          const courses = await fetchLearnxCatalog(integration.base_url, integration.api_key);
+          const q = (course ?? "").toLowerCase().trim();
+          const matched = q
+            ? courses.filter((c) => c.name.toLowerCase().includes(q) || q.includes(c.name.toLowerCase()) || (c.description ?? "").toLowerCase().includes(q))
+            : [];
+          const list = matched.length > 0 ? matched : courses;
+          list.slice(0, 15).forEach((c) => addSource({ type: "crm", label: `learnX: ${c.name}` }));
+          return {
+            connected: true,
+            exact_match: matched.length > 0,
+            note: q && matched.length === 0 ? "No course matched that name — here is the full list; pick the relevant ones yourself." : undefined,
+            courses: list.slice(0, 15).map(courseForAgent),
+          };
+        } catch (e) {
+          console.error("[learnx] catalog failed", e);
+          return { connected: true, error: "learnX hozir javob bermadi. Narx yoki vaqtni taxmin qilmang; mijozga keyinroq aniqlab berishni yoki operatorni taklif qiling." };
+        }
       },
     }),
 
