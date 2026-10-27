@@ -117,7 +117,7 @@ export function courseForAgent(course: LearnxCourse) {
   return {
     name: course.name,
     description: course.description,
-    price_per_month: formatPriceUzs(course.price),
+    price: formatPriceUzs(course.price),
     duration: [
       course.durationMonth ? `${course.durationMonth} oy` : null,
       course.durationHours ? `${course.durationHours} soat` : null,

@@ -41,7 +41,7 @@ describe("learnX catalog", () => {
 
   it("states the exact course price", () => {
     const course = parseLearnxCatalog(sample)![0]!;
-    expect(courseForAgent(course).price_per_month).toBe("800 000 so'm");
+    expect(courseForAgent(course).price).toBe("800 000 so'm");
   });
 
   it("offers only groups a new student can join (not finished, not full)", () => {
