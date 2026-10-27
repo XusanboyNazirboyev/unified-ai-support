@@ -226,7 +226,7 @@ export const ru: Messages = {
 
   "channels.title": "Каналы",
   "channels.description":
-    "Мессенджеры, в которые пишут клиенты. Сейчас работает демо-режим — подключение реальных аккаунтов на следующем этапе.",
+    "Мессенджеры, в которые пишут клиенты. Telegram-бота можно подключить по-настоящему; Instagram и WhatsApp пока в демо-режиме.",
   "channels.req.telegram": "Нужен бот, созданный через @BotFather. После подключения сообщения сразу попадают во входящие.",
   "channels.req.instagram": "Нужен Instagram Business аккаунт и разрешение Meta (app review). Сообщения Direct приходят во входящие.",
   "channels.req.whatsapp": "Нужен WhatsApp Business аккаунт и номер телефона. Подключается после одобрения Meta.",

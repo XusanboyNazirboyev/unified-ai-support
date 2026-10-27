@@ -106,7 +106,19 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           if (!text) text = incoming.hasOtherMedia ? "[Mijoz matnsiz rasm yoki fayl yubordi]" : "[Bo'sh xabar]";
 
           const result = await handleIncoming(supabaseAdmin, ownerId, conversation.id, text, voice);
-          if (result.reply) await sendTelegramText(bot.bot_token, incoming.chatId, result.reply);
+          if (result.reply) {
+            try {
+              await sendTelegramText(bot.bot_token, incoming.chatId, result.reply);
+            } catch (e) {
+              console.error("[telegram] reply send failed", e);
+              if (result.replyMessageId) {
+                await supabaseAdmin
+                  .from("messages")
+                  .update({ delivery_error: e instanceof Error ? e.message : "Telegram'ga yuborilmadi" })
+                  .eq("id", result.replyMessageId);
+              }
+            }
+          }
           return Response.json({ ok: true, outcome: result.outcome });
         } catch (e) {
           // Acknowledge so Telegram does not resend endlessly; the error is logged for the owner.

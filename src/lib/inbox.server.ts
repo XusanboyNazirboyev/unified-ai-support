@@ -21,6 +21,7 @@ export type IncomingResult = {
   message?: string;
   /** Text the AI sent back, to deliver to the real channel. */
   reply?: string;
+  replyMessageId?: string;
 };
 
 export async function handleIncoming(
@@ -114,16 +115,18 @@ export async function handleIncoming(
     return { outcome: "ai_error", message: friendlyAiError(error) };
   }
 
+  let replyMessageId: string | undefined;
   if (replyText) {
-    const { error } = await supabase.from("messages").insert({
+    const { data: saved, error } = await supabase.from("messages").insert({
       owner_id: userId,
       conversation_id: conversationId,
       role: "ai",
       content: replyText,
       sources: state.sources,
       response_ms: Date.now() - receivedAt,
-    });
+    }).select("id").single();
     if (error) throw new Error(`AI javobini saqlab bo'lmadi: ${error.message}`);
+    replyMessageId = saved.id;
   }
 
   // Link a customer that the agent verified during this turn.
@@ -133,7 +136,7 @@ export async function handleIncoming(
 
   if (state.handoverReason) {
     await handOver(supabase, userId, conversationId, state.handoverReason, replyText);
-    return { outcome: "handover", ...(replyText ? { reply: replyText } : {}) };
+    return { outcome: "handover", ...(replyText && replyMessageId ? { reply: replyText, replyMessageId } : {}) };
   }
 
   await supabase
@@ -144,7 +147,7 @@ export async function handleIncoming(
       unread_count: 0,
     })
     .eq("id", conversationId);
-  return { outcome: "ai_replied", reply: replyText };
+  return { outcome: "ai_replied", ...(replyText && replyMessageId ? { reply: replyText, replyMessageId } : {}) };
 }
 
 async function handOver(supabase: Supa, userId: string, conversationId: string, reason: string, preview?: string) {

@@ -238,7 +238,7 @@ export const uz = {
   // channels
   "channels.title": "Kanallar",
   "channels.description":
-    "Mijozlar yozadigan messenjerlar. Hozir demo rejimida ishlayapti — haqiqiy akkauntlarni ulash keyingi bosqich.",
+    "Mijozlar yozadigan messenjerlar. Telegram botni haqiqiy ulash mumkin; Instagram va WhatsApp hozircha demo rejimida.",
   "channels.req.telegram": "@BotFather orqali yaratilgan bot kerak. Bot ulanganda xabarlar Inbox'ga to'g'ridan-to'g'ri tushadi.",
   "channels.req.instagram": "Instagram Business akkaunt va Meta'ning ruxsati (app review) kerak. Direct xabarlar Inbox'ga keladi.",
   "channels.req.whatsapp": "WhatsApp Business akkaunt va telefon raqami kerak. Meta tasdig'idan so'ng ulanadi.",

@@ -226,7 +226,7 @@ export const en: Messages = {
 
   "channels.title": "Channels",
   "channels.description":
-    "The messengers your customers write in. Demo mode for now — connecting real accounts is the next stage.",
+    "The messengers your customers write in. Telegram bots can be connected for real; Instagram and WhatsApp are still in demo mode.",
   "channels.req.telegram": "Needs a bot created with @BotFather. Once connected, messages land straight in the inbox.",
   "channels.req.instagram": "Needs an Instagram Business account and Meta approval (app review). Direct messages arrive in the inbox.",
   "channels.req.whatsapp": "Needs a WhatsApp Business account and phone number. Connects after Meta approval.",
