@@ -18,6 +18,7 @@ import { formatSum, normalizeOrderNumber, ORDER_STATUSES } from "@/lib/agent-rul
 import { customersQuery, ordersQuery } from "@/lib/queries";
 import { useI18n } from "@/lib/i18n/context";
 import { LearnxConnect } from "@/components/learnx-connect";
+import { BitrixConnect } from "@/components/bitrix-connect";
 
 export const Route = createFileRoute("/_authenticated/crm")({
   head: () => ({
@@ -39,7 +40,6 @@ export const Route = createFileRoute("/_authenticated/crm")({
 const PROVIDERS = [
   { name: null, active: true },
   { name: "amoCRM", active: false },
-  { name: "Bitrix24", active: false },
   { name: "HubSpot", active: false },
 ] as const;
 
@@ -109,8 +109,11 @@ function CrmPage() {
         description={t("crm.description")}
       />
       <div className="space-y-6 p-6">
-        <LearnxConnect />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <LearnxConnect />
+          <BitrixConnect />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
           {PROVIDERS.map((p) => (
             <div key={p.name ?? "internal"} className={`rounded-2xl border p-4 ${p.active ? "border-primary bg-secondary" : "bg-card"}`}>
               <div className="flex items-center justify-between">
