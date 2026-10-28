@@ -13,6 +13,7 @@ import {
   rankKbArticles,
   type MessageSource,
 } from "@/lib/agent-rules";
+import { dealNumberMatches, isUsablePhone } from "@/lib/bitrix-rules";
 import { courseForAgent } from "@/lib/learnx-rules";
 import { createLovableAiGatewayRunIdFetch } from "./run-id.server";
 
@@ -24,6 +25,7 @@ export type AgentSettings = Tables<"agent_settings">;
 type Customer = Tables<"crm_customers">;
 
 export type AgentRunState = {
+  channel: string;
   sources: MessageSource[];
   handoverReason: string | null;
   customerId: string | null;
@@ -52,9 +54,15 @@ export async function loadAgentSettings(supabase: Supa, ownerId: string): Promis
   return created;
 }
 
+/** Which optional outside systems this workspace has connected (shapes the agent's instructions). */
+export async function loadAgentIntegrations(ownerId: string): Promise<{ bitrix24: boolean }> {
+  const { loadBitrixWebhook } = await import("@/lib/bitrix.server");
+  return { bitrix24: !!(await loadBitrixWebhook(ownerId)) };
+}
+
 export function buildInstructions(
   settings: AgentSettings,
-  opts: { channel: string; customer: Customer | null },
+  opts: { channel: string; customer: Customer | null; bitrix24?: boolean },
 ): string {
   const tone = TONE_GUIDE[settings.tone] ?? TONE_GUIDE["samimiy"];
   const customerLine = opts.customer
@@ -86,6 +94,14 @@ export function buildInstructions(
     "1. General questions (delivery, payment, prices, products, returns, warranty, address, promotions) — ALWAYS call search_knowledge_base first and answer ONLY from the returned articles. Never invent prices, dates, conditions, stock or phone numbers.",
     "1b. Courses, course prices, duration, group start dates, lesson days and times, free seats — ALWAYS call get_course_catalog first (live data from the learning center's learnX system) and answer only from it. Copy prices, days and times exactly. If it says connected=false, use search_knowledge_base instead. If a course or time the customer wants is not listed, say so honestly and offer the closest real options.",
     "2. Orders, order status, delivery date and personal data — use the CRM tools (get_customer_profile, get_orders). Never guess an order status.",
+    ...(opts.bitrix24
+      ? [
+          `2b. The company's Bitrix24 CRM is connected. For a customer's deal / order / application / contract status, ask for their phone number${
+            settings.require_verification ? " AND deal number" : ""
+          } and call bitrix24_find_customer. Say the stage name exactly as returned; never guess a stage or a date. If it finds nothing, also try verify_customer (internal CRM) before saying you could not find them.`,
+          "2c. When a new customer wants to sign up, order, book or be called back: ask their name and phone number, then call bitrix24_save_lead with a short Uzbek summary of what they want. Tell them a manager will contact them. Only say it was saved when the tool returned saved=true. Never save a lead without the customer's consent.",
+        ]
+      : []),
     "3. Never reveal data of any customer other than the verified one.",
     "4. Messenger style: short paragraphs, no tables, no headings, at most one emoji. Use prices exactly as written in the knowledge base.",
     "5. Accuracy: if you are not sure a fact is correct, do not state it. Say honestly that you do not have that exact information.",
@@ -252,6 +268,82 @@ export function buildAgentTools(supabase: Supa, ownerId: string, settings: Agent
           today: new Date().toISOString().slice(0, 10),
           orders: data.map((o) => ({ ...o, total_formatted: formatSum(o.total, o.currency) })),
         };
+      },
+    }),
+
+    bitrix24_find_customer: tool({
+      description:
+        "Find the customer in the company's Bitrix24 CRM by phone: their name, deals (orders) with the current stage, amount and dates, and applications (leads) with status.",
+      inputSchema: z.object({
+        phone: z.string().describe("Customer phone number as they wrote it"),
+        deal_number: z.string().nullable().describe("Deal / order number the customer gave, or null"),
+      }),
+      execute: async ({ phone, deal_number }) => {
+        const { loadBitrixWebhook, findBitrixCustomer } = await import("@/lib/bitrix.server");
+        const webhook = await loadBitrixWebhook(ownerId);
+        if (!webhook) return { connected: false, note: "Bitrix24 ulanmagan. verify_customer ishlating." };
+        if (!isUsablePhone(phone)) return { found: false, reason: "Telefon raqami to'liq emas — mijozdan to'liq raqamni so'rang" };
+        try {
+          const found = await findBitrixCustomer(webhook, phone);
+          if (!found.found) {
+            return { found: false, reason: "Bitrix24 da bu raqam bilan mijoz topilmadi. Raqam to'g'riligini so'rang yoki verify_customer bilan ichki CRMni tekshiring." };
+          }
+          if (settings.require_verification && found.dealIds.length > 0) {
+            const ok = found.dealIds.some((id) => dealNumberMatches(deal_number, id));
+            if (!ok) {
+              return {
+                found: true,
+                verified: false,
+                reason: deal_number ? "Telefon va bitim raqami mos kelmadi" : "Tasdiqlash uchun bitim (buyurtma) raqamini so'rang",
+              };
+            }
+          }
+          addSource({ type: "crm", label: `Bitrix24: ${found.name ?? phone}` });
+          const deals = deal_number
+            ? found.deals.filter((d) => dealNumberMatches(deal_number, d.deal_number))
+            : found.deals;
+          return {
+            found: true,
+            verified: true,
+            today: new Date().toISOString().slice(0, 10),
+            name: found.name,
+            deals: deals.length ? deals : found.deals,
+            applications: found.applications,
+          };
+        } catch (e) {
+          console.error("[bitrix] find failed", e);
+          return { error: "Bitrix24 hozir javob bermadi. Statusni taxmin qilmang; keyinroq aniqlab berishni yoki operatorni taklif qiling." };
+        }
+      },
+    }),
+
+    bitrix24_save_lead: tool({
+      description:
+        "Save a new application (lead) in Bitrix24 for a customer who wants to sign up, order or be called back. Requires the customer's name, phone and consent.",
+      inputSchema: z.object({
+        name: z.string().min(1).describe("Customer's name"),
+        phone: z.string().describe("Customer's phone number"),
+        interest: z.string().min(2).describe("Short Uzbek summary of what the customer wants (course, product, question)"),
+      }),
+      execute: async ({ name, phone, interest }) => {
+        const { loadBitrixWebhook, saveBitrixLead } = await import("@/lib/bitrix.server");
+        const webhook = await loadBitrixWebhook(ownerId);
+        if (!webhook) return { saved: false, connected: false, note: "Bitrix24 ulanmagan. Operatorni taklif qiling." };
+        if (!isUsablePhone(phone)) return { saved: false, reason: "Telefon raqami to'liq emas — to'liq raqamni so'rang" };
+        try {
+          const res = await saveBitrixLead(webhook, { name: name.trim(), phone: phone.trim(), interest: interest.trim(), channel: state.channel });
+          addSource({ type: "crm", label: `Bitrix24 lid #${res.id}` });
+          return {
+            saved: true,
+            already_existed: !res.created,
+            note: res.created
+              ? "Yangi ariza saqlandi. Mijozga menejer tez orada bog'lanishini ayting."
+              : "Bu raqamdan ariza oldin ham bor edi — yangi so'rov unga izoh qilib qo'shildi. Mijozga menejer bog'lanishini ayting.",
+          };
+        } catch (e) {
+          console.error("[bitrix] save lead failed", e);
+          return { saved: false, error: "Arizani saqlab bo'lmadi. Mijozga buni ochiq ayting va operatorni taklif qiling." };
+        }
       },
     }),
 

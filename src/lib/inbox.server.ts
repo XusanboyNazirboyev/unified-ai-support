@@ -7,6 +7,7 @@ import { formatVoiceForAgent, parseVoiceMeta, type VoiceMeta } from "@/lib/voice
 import {
   buildAgentTools,
   buildInstructions,
+  loadAgentIntegrations,
   friendlyAiError,
   loadAgentSettings,
   runAgent,
@@ -97,7 +98,7 @@ export async function handleIncoming(
     customer = data;
   }
 
-  const state: AgentRunState = { sources: [], handoverReason: null, customerId: customer?.id ?? null };
+  const state: AgentRunState = { channel: conversation.channel, sources: [], handoverReason: null, customerId: customer?.id ?? null };
   const tools = buildAgentTools(supabase, userId, settings, state);
 
   let replyText = "";
@@ -105,7 +106,7 @@ export async function handleIncoming(
     const { result } = runAgent({
       apiKey,
       initialRunId: undefined,
-      instructions: buildInstructions(settings, { channel: conversation.channel, customer }),
+      instructions: buildInstructions(settings, { channel: conversation.channel, customer, ...(await loadAgentIntegrations(userId)) }),
       messages: modelMessages,
       tools,
     });

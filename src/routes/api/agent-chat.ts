@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   buildAgentTools,
   buildInstructions,
+  loadAgentIntegrations,
   friendlyAiError,
   loadAgentSettings,
   runAgent,
@@ -56,7 +57,7 @@ async function handleTestChat(request: Request): Promise<Response> {
     customer = data;
   }
 
-  const state: AgentRunState = { sources: [], handoverReason: null, customerId: customer?.id ?? null };
+  const state: AgentRunState = { channel: channel, sources: [], handoverReason: null, customerId: customer?.id ?? null };
   const tools = buildAgentTools(supabase, userId, settings, state);
   const { result, runIdFetch } = runAgent({
     apiKey,
