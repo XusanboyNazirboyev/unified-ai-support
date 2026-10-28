@@ -57,12 +57,12 @@ async function handleTestChat(request: Request): Promise<Response> {
     customer = data;
   }
 
-  const state: AgentRunState = { channel: channel, sources: [], handoverReason: null, customerId: customer?.id ?? null };
+  const state: AgentRunState = { channel, sources: [], handoverReason: null, customerId: customer?.id ?? null };
   const tools = buildAgentTools(supabase, userId, settings, state);
   const { result, runIdFetch } = runAgent({
     apiKey,
     initialRunId: getLovableAiGatewayRunId(request),
-    instructions: buildInstructions(settings, { channel, customer }),
+    instructions: buildInstructions(settings, { channel, customer, ...(await loadAgentIntegrations(userId)) }),
     messages: await convertToModelMessages(agentMessages),
     tools,
     abortSignal: request.signal,
