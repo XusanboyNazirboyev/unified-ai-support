@@ -19,8 +19,12 @@ export class BitrixError extends Error {
   }
 }
 
-/** Calls one Bitrix24 REST method through the workspace's incoming webhook. */
-export async function callBitrix<T = unknown>(webhook: string, method: string, params: Record<string, unknown> = {}): Promise<T> {
+/** Calls one Bitrix24 REST method through the workspace's incoming webhook; returns `result` and list `total`. */
+async function callBitrixFull<T>(
+  webhook: string,
+  method: string,
+  params: Record<string, unknown>,
+): Promise<{ result: T; total: number | null }> {
   let response: Response;
   try {
     response = await fetch(`${webhook}${method}.json`, {
@@ -33,7 +37,7 @@ export async function callBitrix<T = unknown>(webhook: string, method: string, p
     throw new BitrixError(`Bitrix24 ga ulanib bo'lmadi: ${e instanceof Error ? e.message : ""}`, "unreachable");
   }
   const text = await response.text();
-  let json: { result?: unknown; error?: string; error_description?: string } | null = null;
+  let json: { result?: unknown; total?: number; error?: string; error_description?: string } | null = null;
   try {
     json = JSON.parse(text);
   } catch {
@@ -52,36 +56,22 @@ export async function callBitrix<T = unknown>(webhook: string, method: string, p
       "bad_response",
     );
   }
-  return json.result as T;
+  return { result: json.result as T, total: typeof json.total === "number" ? json.total : null };
+}
+
+export async function callBitrix<T = unknown>(webhook: string, method: string, params: Record<string, unknown> = {}): Promise<T> {
+  return (await callBitrixFull<T>(webhook, method, params)).result;
 }
 
 /** Checks the webhook can read CRM data; returns contact and deal counts. */
 export async function verifyBitrix(webhook: string) {
-  const [contacts, deals] = await Promise.all([
-    fetch(`${webhook}crm.contact.list.json`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ select: ["ID"] }),
-      signal: AbortSignal.timeout(8000),
-    }).catch(() => null),
-    callBitrix<unknown[]>(webhook, "crm.deal.list", { select: ["ID"] }),
-  ]);
-  void contacts;
-  // Second call reads the `total` field that `result` alone hides.
-  const totals = await Promise.all(
-    ["crm.contact.list", "crm.deal.list"].map(async (m) => {
-      const r = await fetch(`${webhook}${m}.json`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ select: ["ID"] }),
-        signal: AbortSignal.timeout(8000),
-      });
-      const j = (await r.json().catch(() => ({}))) as { total?: number; result?: unknown[] };
-      return typeof j.total === "number" ? j.total : (j.result?.length ?? 0);
-    }),
+  const [contacts, deals] = await Promise.all(
+    ["crm.contact.list", "crm.deal.list"].map((m) => callBitrixFull<unknown[]>(webhook, m, { select: ["ID"] })),
   );
-  void deals;
-  return { contacts: totals[0] ?? 0, deals: totals[1] ?? 0 };
+  return {
+    contacts: contacts?.total ?? contacts?.result.length ?? 0,
+    deals: deals?.total ?? deals?.result.length ?? 0,
+  };
 }
 
 async function findIds(webhook: string, entity: "CONTACT" | "LEAD", phone: string) {
