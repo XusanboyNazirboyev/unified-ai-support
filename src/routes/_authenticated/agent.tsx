@@ -398,7 +398,7 @@ function TestChat() {
                             <MediaSummary
                               key={i}
                               meta={media}
-                              previewUrl={meta?.previewId ? previewsRef.current.get(meta.previewId) : null}
+                              previewUrl={(meta?.previewId ? previewsRef.current.get(meta.previewId) : null) ?? null}
                             />
                           );
                         }
