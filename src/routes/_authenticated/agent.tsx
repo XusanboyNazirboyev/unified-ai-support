@@ -34,6 +34,8 @@ import { CHANNEL_LABELS, CHANNELS, type Channel } from "@/lib/agent-rules";
 import { customersQuery, settingsQuery } from "@/lib/queries";
 import { parseVoiceMeta } from "@/lib/voice";
 import { VoiceBadge, VoiceRecordButton } from "@/components/voice-input";
+import { MediaSummary, MediaUploadButton } from "@/components/media-input";
+import { mediaPreview, parseMediaMeta } from "@/lib/media";
 import { useI18n } from "@/lib/i18n/context";
 import type { MessageKey } from "@/lib/i18n/locales";
 
@@ -201,6 +203,9 @@ const TOOL_TITLES: Record<string, MessageKey> = {
   get_customer_profile: "agent.tool.get_customer_profile",
   get_orders: "agent.tool.get_orders",
   handover_to_human: "agent.tool.handover_to_human",
+  get_course_catalog: "agent.tool.get_course_catalog",
+  bitrix24_find_customer: "agent.tool.bitrix24_find_customer",
+  bitrix24_save_lead: "agent.tool.bitrix24_save_lead",
 };
 
 function sourcesFromParts(message: UIMessage, t: ReturnType<typeof useI18n>["t"]) {
@@ -279,6 +284,9 @@ function TestChat() {
     stop();
     setMessages([]);
   }
+
+  // Local previews of photos/videos sent in this test chat (never uploaded anywhere besides the AI check).
+  const previewsRef = useRef(new Map<string, string>());
 
   function submit(text: string) {
     const value = text.trim();
@@ -382,7 +390,18 @@ function TestChat() {
                   >
                     {message.parts.map((part, i) => {
                       if (part.type === "text") {
-                        const voice = parseVoiceMeta((message.metadata as { voice?: unknown } | undefined)?.voice);
+                        const meta = message.metadata as { voice?: unknown; media?: unknown; previewId?: string } | undefined;
+                        const voice = parseVoiceMeta(meta?.voice);
+                        const media = parseMediaMeta(meta?.media);
+                        if (message.role === "user" && media) {
+                          return (
+                            <MediaSummary
+                              key={i}
+                              meta={media}
+                              previewUrl={meta?.previewId ? previewsRef.current.get(meta.previewId) : null}
+                            />
+                          );
+                        }
                         return message.role === "user" ? (
                           <div key={i} className="space-y-1">
                             {voice && <VoiceBadge meta={voice} />}
@@ -455,14 +474,25 @@ function TestChat() {
         <PromptInput onSubmit={(msg) => submit(msg.text)}>
           <PromptInputTextarea placeholder={t("test.placeholder")} autoFocus />
           <PromptInputFooter className="justify-between">
-            <VoiceRecordButton
-              allowUpload
-              disabled={busy}
-              onTranscribed={({ transcript, meta }) => {
-                if (busy) return;
-                sendMessage({ text: transcript, metadata: { voice: meta } });
-              }}
-            />
+            <div className="flex items-center gap-1">
+              <VoiceRecordButton
+                allowUpload
+                disabled={busy}
+                onTranscribed={({ transcript, meta }) => {
+                  if (busy) return;
+                  sendMessage({ text: transcript, metadata: { voice: meta } });
+                }}
+              />
+              <MediaUploadButton
+                disabled={busy}
+                onAnalyzed={(meta, file) => {
+                  if (busy) return;
+                  const previewId = crypto.randomUUID();
+                  previewsRef.current.set(previewId, URL.createObjectURL(file));
+                  sendMessage({ text: mediaPreview("", meta), metadata: { media: meta, previewId } });
+                }}
+              />
+            </div>
             <PromptInputSubmit status={status} onStop={stop} />
           </PromptInputFooter>
         </PromptInput>

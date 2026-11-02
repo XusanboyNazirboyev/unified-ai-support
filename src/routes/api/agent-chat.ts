@@ -14,6 +14,7 @@ import {
 import { getLovableAiGatewayRunId, withLovableAiGatewayRunIdHeader } from "@/lib/ai/run-id.server";
 import { getUserClientFromRequest } from "@/lib/supabase-user.server";
 import { formatVoiceForAgent, parseVoiceMeta } from "@/lib/voice";
+import { formatMediaForAgent, parseMediaMeta } from "@/lib/media";
 
 const bodySchema = z.object({
   messages: z.array(z.any()).min(1).max(60),
@@ -35,7 +36,13 @@ async function handleTestChat(request: Request): Promise<Response> {
   const messages = parsed.data.messages as UIMessage[];
   // Voice notes arrive as transcripts with metadata; the agent sees them with a voice marker.
   const agentMessages = messages.map((m) => {
-    const raw = m.role === "user" ? (m.metadata as { voice?: unknown } | undefined)?.voice : undefined;
+    const metadata = m.role === "user" ? (m.metadata as { voice?: unknown; media?: unknown } | undefined) : undefined;
+    const media = parseMediaMeta(metadata?.media);
+    if (media) {
+      // Photos/videos arrive as what the vision model saw; the agent sees a media marker instead of the preview text.
+      return { ...m, parts: m.parts.map((p) => (p.type === "text" ? { ...p, text: formatMediaForAgent("", media) } : p)) };
+    }
+    const raw = metadata?.voice;
     if (!raw) return m;
     const meta = parseVoiceMeta(raw);
     return {

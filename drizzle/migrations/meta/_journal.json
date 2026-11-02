@@ -36,6 +36,13 @@
       "when": 1793077432979,
       "tag": "0004_crm_integrations",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793595022871,
+      "tag": "0005_message_media",
+      "breakpoints": true
     }
   ]
 }

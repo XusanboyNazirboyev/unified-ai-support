@@ -302,6 +302,8 @@ export type Database = {
           delivery_error: string | null
           id: string
           is_voice: boolean
+          media_kind: string | null
+          media_meta: Json | null
           owner_id: string
           response_ms: number | null
           role: Database["public"]["Enums"]["message_role"]
@@ -315,6 +317,8 @@ export type Database = {
           delivery_error?: string | null
           id?: string
           is_voice?: boolean
+          media_kind?: string | null
+          media_meta?: Json | null
           owner_id?: string
           response_ms?: number | null
           role: Database["public"]["Enums"]["message_role"]
@@ -328,6 +332,8 @@ export type Database = {
           delivery_error?: string | null
           id?: string
           is_voice?: boolean
+          media_kind?: string | null
+          media_meta?: Json | null
           owner_id?: string
           response_ms?: number | null
           role?: Database["public"]["Enums"]["message_role"]

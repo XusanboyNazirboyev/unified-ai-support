@@ -33,8 +33,37 @@ export type TelegramIncoming = {
   username: string | null;
   text: string | null;
   voice: { fileId: string; fileSize: number | null; mime: string | null } | null;
+  /** Photo or video the customer sent (largest photo size that fits the download limit). */
+  media: { kind: "photo" | "video"; fileId: string; fileSize: number | null; mime: string } | null;
   hasOtherMedia: boolean;
 };
+
+type TgFile = { file_id: string; file_size?: number; mime_type?: string };
+type TgPhotoSize = TgFile & { width?: number; height?: number };
+
+const PHOTO_LIMIT = 10 * 1024 * 1024;
+
+function pickMedia(m: TgMessage): TelegramIncoming["media"] {
+  if (Array.isArray(m.photo) && m.photo.length > 0) {
+    const sizes = (m.photo as TgPhotoSize[]).filter((p) => p && typeof p.file_id === "string");
+    const fitting = sizes.filter((p) => !p.file_size || p.file_size <= PHOTO_LIMIT);
+    const best = (fitting.length ? fitting : sizes).at(-1);
+    if (best) return { kind: "photo", fileId: best.file_id, fileSize: best.file_size ?? null, mime: "image/jpeg" };
+  }
+  const video = (m.video ?? m.video_note ?? m.animation) as TgFile | undefined;
+  if (video && typeof video.file_id === "string") {
+    return { kind: "video", fileId: video.file_id, fileSize: video.file_size ?? null, mime: video.mime_type ?? "video/mp4" };
+  }
+  const doc = m.document as TgFile | undefined;
+  const docMime = doc?.mime_type?.toLowerCase() ?? "";
+  if (doc && typeof doc.file_id === "string" && /^image\/(jpeg|png|webp)$/.test(docMime)) {
+    return { kind: "photo", fileId: doc.file_id, fileSize: doc.file_size ?? null, mime: docMime };
+  }
+  if (doc && typeof doc.file_id === "string" && /^video\/(mp4|quicktime|webm)$/.test(docMime)) {
+    return { kind: "video", fileId: doc.file_id, fileSize: doc.file_size ?? null, mime: docMime };
+  }
+  return null;
+}
 
 type TgUser = { first_name?: string; last_name?: string; username?: string };
 type TgMessage = {
@@ -48,6 +77,8 @@ type TgMessage = {
   document?: unknown;
   sticker?: unknown;
   video?: unknown;
+  video_note?: unknown;
+  animation?: unknown;
 };
 
 /** Extracts what the inbox needs from a Telegram update. Only private chats are handled. */
@@ -63,6 +94,7 @@ export function parseTelegramUpdate(update: unknown): TelegramIncoming | null {
   const username = person.username ?? null;
   const rawText = (m.text ?? m.caption ?? "").trim();
   const audio = m.voice ?? m.audio ?? null;
+  const media = pickMedia(m);
 
   return {
     updateId: u.update_id,
@@ -71,7 +103,8 @@ export function parseTelegramUpdate(update: unknown): TelegramIncoming | null {
     username,
     text: rawText === "/start" ? "Salom!" : rawText || null,
     voice: audio ? { fileId: audio.file_id, fileSize: audio.file_size ?? null, mime: audio.mime_type ?? null } : null,
-    hasOtherMedia: Boolean(m.photo || m.document || m.sticker || m.video),
+    media,
+    hasOtherMedia: !media && Boolean(m.photo || m.document || m.sticker || m.video || m.video_note || m.animation),
   };
 }
 

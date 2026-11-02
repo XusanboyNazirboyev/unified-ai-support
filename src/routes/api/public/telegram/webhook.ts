@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { parseTelegramUpdate } from "@/lib/telegram-rules";
 import { MAX_VOICE_BYTES } from "@/lib/voice";
+import { maxBytesFor, type MediaMeta } from "@/lib/media";
 
 function safeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
@@ -103,9 +104,40 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             text = result.transcript.trim() || "[Ovozli xabar: nutq eshitilmadi]";
             voice = result.meta;
           }
-          if (!text) text = incoming.hasOtherMedia ? "[Mijoz matnsiz rasm yoki fayl yubordi]" : "[Bo'sh xabar]";
+          let media: MediaMeta | null = null;
+          if (incoming.media) {
+            const limit = maxBytesFor(incoming.media.kind);
+            const isVideo = incoming.media.kind === "video";
+            if (incoming.media.fileSize && incoming.media.fileSize > limit) {
+              text = `${text ? `${text}\n` : ""}[Mijoz juda katta ${isVideo ? "video" : "rasm"} yubordi — ko'rib bo'lmadi. Undan qisqaroq video, rasm yoki mahsulot nomini so'rang.]`;
+            } else {
+              const apiKey = process.env["LOVABLE_API_KEY"];
+              if (!apiKey) throw new Error("AI sozlanmagan");
+              const { analyzeMedia } = await import("@/lib/ai/media.server");
+              const { data: settings } = await supabaseAdmin
+                .from("agent_settings")
+                .select("company_name")
+                .eq("owner_id", ownerId)
+                .maybeSingle();
+              try {
+                const bytes = await downloadTelegramFile(bot.bot_token, incoming.media.fileId, limit);
+                media = await analyzeMedia({
+                  apiKey,
+                  base64: bytesToBase64(bytes),
+                  mime: incoming.media.mime,
+                  kind: incoming.media.kind,
+                  caption: text ?? "",
+                  companyName: settings?.company_name ?? "",
+                });
+              } catch (e) {
+                console.error("[telegram] media analysis failed", e);
+                text = `${text ? `${text}\n` : ""}[Mijoz ${isVideo ? "video" : "rasm"} yubordi, lekin uni ko'rib bo'lmadi. Mahsulot nomini yozishini yoki boshqa rasm yuborishini so'rang.]`;
+              }
+            }
+          }
+          if (!text && !media) text = incoming.hasOtherMedia ? "[Mijoz matnsiz fayl yoki stiker yubordi]" : "[Bo'sh xabar]";
 
-          const result = await handleIncoming(supabaseAdmin, ownerId, conversation.id, text, voice);
+          const result = await handleIncoming(supabaseAdmin, ownerId, conversation.id, text ?? "", voice, media);
           if (result.reply) {
             try {
               await sendTelegramText(bot.bot_token, incoming.chatId, result.reply);
