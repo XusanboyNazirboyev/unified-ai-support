@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { detectHandoverKeyword } from "@/lib/agent-rules";
 import { formatVoiceForAgent, parseVoiceMeta, type VoiceMeta } from "@/lib/voice";
+import { formatMediaForAgent, mediaPreview, parseMediaMeta, type MediaMeta } from "@/lib/media";
 import {
   buildAgentTools,
   buildInstructions,
@@ -31,6 +32,7 @@ export async function handleIncoming(
   conversationId: string,
   text: string,
   voice: VoiceMeta | null = null,
+  media: MediaMeta | null = null,
 ): Promise<IncomingResult> {
   const { data: conversation, error: convError } = await supabase
     .from("conversations")
@@ -47,13 +49,15 @@ export async function handleIncoming(
     content: text,
     is_voice: voice !== null,
     voice_meta: voice,
+    media_kind: media?.kind ?? null,
+    media_meta: media,
   });
   if (insertError) throw new Error(`Xabarni saqlab bo'lmadi: ${insertError.message}`);
 
   await supabase
     .from("conversations")
     .update({
-      last_message_preview: (voice ? `🎤 ${text}` : text).slice(0, 140),
+      last_message_preview: (media ? mediaPreview(text, media) : voice ? `🎤 ${text}` : text).slice(0, 140),
       last_message_at: new Date().toISOString(),
       unread_count: conversation.unread_count + 1,
       status: conversation.status === "resolved" ? "open" : conversation.status,
@@ -76,7 +80,7 @@ export async function handleIncoming(
 
   const { data: history } = await supabase
     .from("messages")
-    .select("role, content, is_voice, voice_meta")
+    .select("role, content, is_voice, voice_meta, media_kind, media_meta")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: false })
     .limit(30);
@@ -87,7 +91,11 @@ export async function handleIncoming(
       m.role === "customer"
         ? {
             role: "user" as const,
-            content: m.is_voice ? formatVoiceForAgent(m.content, parseVoiceMeta(m.voice_meta)) : m.content,
+            content: m.media_kind
+              ? formatMediaForAgent(m.content, parseMediaMeta(m.media_meta))
+              : m.is_voice
+                ? formatVoiceForAgent(m.content, parseVoiceMeta(m.voice_meta))
+                : m.content,
           }
         : { role: "assistant" as const, content: m.content },
     );
