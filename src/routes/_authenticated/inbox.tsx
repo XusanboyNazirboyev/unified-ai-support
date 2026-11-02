@@ -41,6 +41,8 @@ import { useI18n } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/locales";
 import { parseVoiceMeta, type VoiceMeta, type VoiceTranscript } from "@/lib/voice";
 import { VoiceBadge, VoiceRecordButton } from "@/components/voice-input";
+import { MediaSummary } from "@/components/media-input";
+import { parseMediaMeta } from "@/lib/media";
 
 type StatusFilter = "all" | "pending" | "open" | "resolved";
 
@@ -276,7 +278,11 @@ function MessageRow({ message }: { message: Message }) {
       <div className="flex max-w-[80%] flex-col items-start">
         <div className="rounded-2xl rounded-bl-sm border bg-card px-3.5 py-2.5 text-sm shadow-sm">
           {message.is_voice && <VoiceBadge meta={parseVoiceMeta(message.voice_meta)} className="mb-1 text-muted-foreground" />}
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          {(() => {
+            const media = message.media_kind ? parseMediaMeta(message.media_meta) : null;
+            return media ? <MediaSummary meta={media} className="mb-1 text-muted-foreground" /> : null;
+          })()}
+          {message.content && <p className="whitespace-pre-wrap">{message.content}</p>}
         </div>
         <span className="mt-1 text-[10px] text-muted-foreground">{time}</span>
       </div>
