@@ -19,6 +19,7 @@ import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated/cr
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authenticated/knowledge'
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent-chat'
+import { Route as ApiMediaAnalyzeRouteImport } from './routes/api/media-analyze'
 import { Route as ApiVoiceTranscribeRouteImport } from './routes/api/voice-transcribe'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
@@ -71,6 +72,11 @@ const ApiAgentChatRoute = ApiAgentChatRouteImport.update({
   path: '/api/agent-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMediaAnalyzeRoute = ApiMediaAnalyzeRouteImport.update({
+  id: '/api/media-analyze',
+  path: '/api/media-analyze',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiVoiceTranscribeRoute = ApiVoiceTranscribeRouteImport.update({
   id: '/api/voice-transcribe',
   path: '/api/voice-transcribe',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof AuthenticatedInboxRoute
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
+  '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof AuthenticatedInboxRoute
   '/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
+  '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/knowledge': typeof AuthenticatedKnowledgeRoute
   '/api/agent-chat': typeof ApiAgentChatRoute
+  '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/knowledge'
     | '/api/agent-chat'
+    | '/api/media-analyze'
     | '/api/voice-transcribe'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/knowledge'
     | '/api/agent-chat'
+    | '/api/media-analyze'
     | '/api/voice-transcribe'
     | '/api/public/telegram/webhook'
   id:
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inbox'
     | '/_authenticated/knowledge'
     | '/api/agent-chat'
+    | '/api/media-analyze'
     | '/api/voice-transcribe'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
@@ -172,6 +184,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
+  ApiMediaAnalyzeRoute: typeof ApiMediaAnalyzeRoute
   ApiVoiceTranscribeRoute: typeof ApiVoiceTranscribeRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -248,6 +261,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/media-analyze': {
+      id: '/api/media-analyze'
+      path: '/api/media-analyze'
+      fullPath: '/api/media-analyze'
+      preLoaderRoute: typeof ApiMediaAnalyzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/voice-transcribe': {
       id: '/api/voice-transcribe'
       path: '/api/voice-transcribe'
@@ -291,6 +311,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
+  ApiMediaAnalyzeRoute: ApiMediaAnalyzeRoute,
   ApiVoiceTranscribeRoute: ApiVoiceTranscribeRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
