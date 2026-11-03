@@ -264,6 +264,102 @@ export type Database = {
           },
         ]
       }
+      instagram_accounts: {
+        Row: {
+          access_token: string
+          created_at: string
+          ig_user_id: string
+          last_error: string | null
+          last_synced_at: string | null
+          owner_id: string
+          token_refreshed_at: string
+          username: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          ig_user_id: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          owner_id: string
+          token_refreshed_at?: string
+          username: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          ig_user_id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          owner_id?: string
+          token_refreshed_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      instagram_posts: {
+        Row: {
+          admin_note: string | null
+          analysis: Json | null
+          analysis_error: string | null
+          analyzed_at: string | null
+          analyzed_from: string | null
+          analyzing_at: string | null
+          attempts: number
+          caption: string | null
+          created_at: string
+          id: string
+          media_id: string
+          media_type: string
+          owner_id: string
+          permalink: string | null
+          posted_at: string | null
+          shortcode: string | null
+          status: string
+          thumbnail_url: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          analysis?: Json | null
+          analysis_error?: string | null
+          analyzed_at?: string | null
+          analyzed_from?: string | null
+          analyzing_at?: string | null
+          attempts?: number
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_id: string
+          media_type: string
+          owner_id: string
+          permalink?: string | null
+          posted_at?: string | null
+          shortcode?: string | null
+          status?: string
+          thumbnail_url?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          analysis?: Json | null
+          analysis_error?: string | null
+          analyzed_at?: string | null
+          analyzed_from?: string | null
+          analyzing_at?: string | null
+          attempts?: number
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_id?: string
+          media_type?: string
+          owner_id?: string
+          permalink?: string | null
+          posted_at?: string | null
+          shortcode?: string | null
+          status?: string
+          thumbnail_url?: string | null
+        }
+        Relationships: []
+      }
       kb_articles: {
         Row: {
           category: string

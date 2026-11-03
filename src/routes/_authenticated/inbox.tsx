@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ai-elements/conversation";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { ChannelBadge, ChannelDot } from "@/components/channel-badge";
+import { ChannelBadge, ChannelDot, ChannelIcon } from "@/components/channel-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,7 +253,13 @@ function SourceChips({ sources }: { sources: MessageSource[] }) {
           key={`${s.type}-${s.label}`}
           className="inline-flex items-center gap-1 rounded-md border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground"
         >
-          {s.type === "kb" ? <BookOpen className="size-3" /> : <Database className="size-3" />}
+          {s.type === "kb" ? (
+            <BookOpen className="size-3" />
+          ) : s.type === "instagram" ? (
+            <ChannelIcon channel="instagram" className="size-3" />
+          ) : (
+            <Database className="size-3" />
+          )}
           {s.label}
         </span>
       ))}

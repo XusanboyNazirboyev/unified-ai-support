@@ -21,6 +21,7 @@ import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authentica
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent-chat'
 import { Route as ApiMediaAnalyzeRouteImport } from './routes/api/media-analyze'
 import { Route as ApiVoiceTranscribeRouteImport } from './routes/api/voice-transcribe'
+import { Route as ApiPublicInstagramSyncRouteImport } from './routes/api/public/instagram/sync'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -82,6 +83,11 @@ const ApiVoiceTranscribeRoute = ApiVoiceTranscribeRouteImport.update({
   path: '/api/voice-transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicInstagramSyncRoute = ApiPublicInstagramSyncRouteImport.update({
+  id: '/api/public/instagram/sync',
+  path: '/api/public/instagram/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/instagram/sync': typeof ApiPublicInstagramSyncRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/instagram/sync': typeof ApiPublicInstagramSyncRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/instagram/sync': typeof ApiPublicInstagramSyncRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/api/agent-chat'
     | '/api/media-analyze'
     | '/api/voice-transcribe'
+    | '/api/public/instagram/sync'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/api/agent-chat'
     | '/api/media-analyze'
     | '/api/voice-transcribe'
+    | '/api/public/instagram/sync'
     | '/api/public/telegram/webhook'
   id:
     | '__root__'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/api/agent-chat'
     | '/api/media-analyze'
     | '/api/voice-transcribe'
+    | '/api/public/instagram/sync'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -186,6 +198,7 @@ export interface RootRouteChildren {
   ApiAgentChatRoute: typeof ApiAgentChatRoute
   ApiMediaAnalyzeRoute: typeof ApiMediaAnalyzeRoute
   ApiVoiceTranscribeRoute: typeof ApiVoiceTranscribeRoute
+  ApiPublicInstagramSyncRoute: typeof ApiPublicInstagramSyncRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -275,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVoiceTranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/instagram/sync': {
+      id: '/api/public/instagram/sync'
+      path: '/api/public/instagram/sync'
+      fullPath: '/api/public/instagram/sync'
+      preLoaderRoute: typeof ApiPublicInstagramSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentChatRoute: ApiAgentChatRoute,
   ApiMediaAnalyzeRoute: ApiMediaAnalyzeRoute,
   ApiVoiceTranscribeRoute: ApiVoiceTranscribeRoute,
+  ApiPublicInstagramSyncRoute: ApiPublicInstagramSyncRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport

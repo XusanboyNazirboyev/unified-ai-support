@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/context";
 import type { VoiceTranscript } from "@/lib/voice";
 import { VoiceRecordButton } from "@/components/voice-input";
+import { InstagramConnect } from "@/components/instagram-connect";
 
 export const Route = createFileRoute("/_authenticated/channels")({
   head: () => ({
@@ -116,6 +117,7 @@ function ChannelsPage() {
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{t(REQUIREMENTS[ch])}</p>
                   {ch === "telegram" && <TelegramConnect />}
+                  {ch === "instagram" && <InstagramConnect />}
                 </div>
               </div>
             );

@@ -44,6 +44,20 @@ Fields:
 - confidence: "high" only when the product and every number you report are clearly readable; "medium" when the type is clear but the exact model is a best guess; "low" when blurry, dark, too far or partly hidden.`;
 }
 
+/** For the business's own Instagram posts: a fuller catalogue-style description the agent can answer from later. */
+function postSystemPrompt(companyName: string, kind: MediaKind) {
+  return `${companyName || "A business"} in Uzbekistan published this ${kind === "video" ? "video (reel)" : "photo"} on its own Instagram account to advertise products or services.
+Customers will later ask the support agent about it ("videodagi telefon qancha?", "postdagi ko'ylak bormi?"). Describe it so the agent can answer. Report ONLY what is really visible${kind === "video" ? " or audible" : ""}. Never invent features, prices or models.
+
+Fields:
+- description: 2-6 sentences in Uzbek Latin — every product or service shown (type, brand, colour, size/volume, quantity, key features shown or said), the offer or promotion if any, and anything a buyer would ask about.
+- product: the main product(s) with exact brand and model ONLY when readable or clearly recognisable; several products separated by "; ". If only the type is known, write the type. Null if no product.
+- visible_text: all important text exactly as written — product names, prices with currency, discounts, dates, phone numbers, addresses. Copy digits exactly. Empty when none.
+- speech: ${kind === "video" ? "what is said in the video, verbatim in the original language/dialect, numbers as digits; mark uncertain words with (?). Null if nobody speaks." : "always null for photos."}
+- language: main spoken language (uz, kaa = Karakalpak, ru, kk, tg, en, mixed, unknown); "unknown" when there is no speech.
+- confidence: "high" only when the product and every number you report are clearly readable or audible; "medium" when the type is clear but the exact model is a best guess; "low" when blurry, dark or unclear.`;
+}
+
 export async function analyzeMedia(params: {
   apiKey: string;
   base64: string;
@@ -51,8 +65,11 @@ export async function analyzeMedia(params: {
   kind: MediaKind;
   caption: string;
   companyName: string;
+  /** "post" = the business's own Instagram post; default "customer" = a photo/video a customer sent. */
+  audience?: "customer" | "post";
   signal?: AbortSignal;
 }): Promise<MediaMeta> {
+  const isPost = params.audience === "post";
   const dataUrl = `data:${params.mime};base64,${params.base64}`;
   const mediaPart =
     params.kind === "video"
@@ -69,14 +86,17 @@ export async function analyzeMedia(params: {
       model: MEDIA_MODEL,
       stream: true,
       messages: [
-        { role: "system", content: systemPrompt(params.companyName, params.kind) },
+        {
+          role: "system",
+          content: isPost ? postSystemPrompt(params.companyName, params.kind) : systemPrompt(params.companyName, params.kind),
+        },
         {
           role: "user",
           content: [
             {
               type: "text",
               text: params.caption.trim()
-                ? `Customer's caption: "${params.caption.trim().slice(0, 500)}"`
+                ? `${isPost ? "Post caption written by the business" : "Customer's caption"}: "${params.caption.trim().slice(0, isPost ? 2200 : 500)}"`
                 : "No caption was written.",
             },
             mediaPart,

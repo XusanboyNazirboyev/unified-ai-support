@@ -15,6 +15,7 @@ import {
 } from "@/lib/agent-rules";
 import { dealNumberMatches, isUsablePhone } from "@/lib/bitrix-rules";
 import { courseForAgent } from "@/lib/learnx-rules";
+import { canAnalyze, findInstagramPosts, instagramShortcode, postForAgent } from "@/lib/instagram-rules";
 import { createLovableAiGatewayRunIdFetch } from "./run-id.server";
 
 export const AGENT_MODEL = "openai/gpt-6-astra";
@@ -55,14 +56,16 @@ export async function loadAgentSettings(supabase: Supa, ownerId: string): Promis
 }
 
 /** Which optional outside systems this workspace has connected (shapes the agent's instructions). */
-export async function loadAgentIntegrations(ownerId: string): Promise<{ bitrix24: boolean }> {
+export async function loadAgentIntegrations(ownerId: string): Promise<{ bitrix24: boolean; instagram: boolean }> {
   const { loadBitrixWebhook } = await import("@/lib/bitrix.server");
-  return { bitrix24: !!(await loadBitrixWebhook(ownerId)) };
+  const { loadInstagramAccount } = await import("@/lib/instagram.server");
+  const [bitrix, instagram] = await Promise.all([loadBitrixWebhook(ownerId), loadInstagramAccount(ownerId)]);
+  return { bitrix24: !!bitrix, instagram: !!instagram };
 }
 
 export function buildInstructions(
   settings: AgentSettings,
-  opts: { channel: string; customer: Customer | null; bitrix24?: boolean },
+  opts: { channel: string; customer: Customer | null; bitrix24?: boolean; instagram?: boolean },
 ): string {
   const tone = TONE_GUIDE[settings.tone] ?? TONE_GUIDE["samimiy"];
   const customerLine = opts.customer
@@ -99,6 +102,17 @@ export function buildInstructions(
     "- A photo/video showing a broken, damaged or wrong item is a complaint: apologise, check the order if the customer is identified, and offer an operator (kind=complaint if they want one or are upset).",
     "- Reply in the customer's language: the caption's language, else the spoken language of the video, else Uzbek.",
     "",
+    ...(opts.instagram
+      ? [
+          "The company's own Instagram posts and reels:",
+          "- The AI has already watched the company's Instagram posts/reels. Call search_instagram_posts when the customer mentions a post, reel, video, story or 'Instagram'da ko'rdim' ('videodagi', 'postdagi', 'reelsdagi', 'oxirgi videoda', 'вот это видео'), shares an instagram.com link, or asks about a product that search_knowledge_base did not find.",
+          "- Answer only from what the tool returns: the caption, the owner's note, and what the AI saw (product, text in the post, speech in the video). Never add features, colours or models that are not listed.",
+          "- Price: use the knowledge base price when it has one. Otherwise you may give a price written in the caption, the owner's note or the post text, saying it is the price shown in the post. Never guess a price.",
+          "- If certainty is 'past' or several posts could match, say what you found briefly (date or product) and ask which one the customer means. If seen_from says only the cover was seen, do not describe what happens in the video.",
+          "- If nothing matches, say you could not find that post and ask the customer to send its link or the product name.",
+          "",
+        ]
+      : []),
     "Hard rules:",
     "1. General questions (delivery, payment, prices, products, returns, warranty, address, promotions) — ALWAYS call search_knowledge_base first and answer ONLY from the returned articles. Never invent prices, dates, conditions, stock or phone numbers.",
     "1b. Courses, course prices, duration, group start dates, lesson days and times, free seats — ALWAYS call get_course_catalog first (live data from the learning center's learnX system) and answer only from it. Copy prices, days and times exactly. If it says connected=false, use search_knowledge_base instead. If a course or time the customer wants is not listed, say so honestly and offer the closest real options.",
@@ -353,6 +367,50 @@ export function buildAgentTools(supabase: Supa, ownerId: string, settings: Agent
           console.error("[bitrix] save lead failed", e);
           return { saved: false, error: "Arizani saqlab bo'lmadi. Mijozga buni ochiq ayting va operatorni taklif qiling." };
         }
+      },
+    }),
+
+    search_instagram_posts: tool({
+      description:
+        "Search the company's own Instagram posts and reels (already watched by AI): caption, owner's note, products shown, text and prices in the post, speech in the video, link and date.",
+      inputSchema: z.object({
+        query: z.string().describe("Product or topic the customer asks about, in Uzbek Latin keywords (translate first)"),
+        link: z.string().nullable().describe("Instagram link the customer shared, or null"),
+      }),
+      execute: async ({ query, link }) => {
+        const { loadInstagramAccount, analyzeWaitingPosts } = await import("@/lib/instagram.server");
+        if (!(await loadInstagramAccount(ownerId))) return { connected: false, note: "Instagram ulanmagan. search_knowledge_base ishlating." };
+        const load = async () => {
+          const { data } = await supabase
+            .from("instagram_posts")
+            .select("id, media_type, caption, permalink, shortcode, posted_at, status, analysis, analyzed_from, admin_note, attempts, analyzing_at")
+            .eq("owner_id", ownerId)
+            .order("posted_at", { ascending: false })
+            .limit(60);
+          return data ?? [];
+        };
+        let posts = await load();
+        // Posts published since the last look are watched now (at most two, the likely matches first).
+        if (posts.some((p) => p.status !== "analyzed" && canAnalyze(p))) {
+          const prefer = findInstagramPosts(posts, query, link, 3).filter((p) => p.status !== "analyzed").map((p) => p.id);
+          if (await analyzeWaitingPosts(ownerId, 2, prefer)) posts = await load();
+        }
+        const found = findInstagramPosts(posts, query, link, 3);
+        const label = (p: (typeof posts)[number]) => {
+          const meta = p.analysis as { product?: string | null } | null;
+          return `Instagram: ${(meta?.product ?? p.caption ?? p.posted_at?.slice(0, 10) ?? "post").slice(0, 50)}`;
+        };
+        if (found.length === 0) {
+          return {
+            found: false,
+            note: instagramShortcode(link)
+              ? "Bu havoladagi post kompaniya akkauntidagi so'nggi postlar orasida yo'q. Mijozdan mahsulot nomini so'rang."
+              : "Hech narsa mos kelmadi. Mijoz 'oxirgi video' kabi aniq birini nazarda tutsa, quyidagi so'nggi postlardan foydalaning; aks holda qaysi post ekanini so'rang.",
+            latest_posts: posts.slice(0, 4).map(postForAgent),
+          };
+        }
+        found.forEach((p) => addSource({ type: "instagram", label: label(p) }));
+        return { found: true, posts: found.map((p) => ({ ...postForAgent(p), label: label(p) })) };
       },
     }),
 

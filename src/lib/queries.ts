@@ -108,3 +108,18 @@ export const analyticsQuery = queryOptions({
     return { conversations: convs.data, messages: msgs.data };
   },
 });
+
+export type InstagramPost = Tables<"instagram_posts">;
+
+export const instagramPostsQuery = queryOptions({
+  queryKey: ["instagram_posts"],
+  queryFn: async (): Promise<InstagramPost[]> => {
+    const { data, error } = await supabase
+      .from("instagram_posts")
+      .select("*")
+      .order("posted_at", { ascending: false })
+      .limit(60);
+    if (error) throw error;
+    return data;
+  },
+});

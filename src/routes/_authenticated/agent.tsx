@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import logo from "@/assets/javobchi-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/app-shell";
+import { ChannelIcon } from "@/components/channel-badge";
 import {
   Conversation,
   ConversationContent,
@@ -206,10 +207,11 @@ const TOOL_TITLES: Record<string, MessageKey> = {
   get_course_catalog: "agent.tool.get_course_catalog",
   bitrix24_find_customer: "agent.tool.bitrix24_find_customer",
   bitrix24_save_lead: "agent.tool.bitrix24_save_lead",
+  search_instagram_posts: "agent.tool.search_instagram_posts",
 };
 
 function sourcesFromParts(message: UIMessage, t: ReturnType<typeof useI18n>["t"]) {
-  const sources: { icon: "kb" | "crm" | "handover"; label: string }[] = [];
+  const sources: { icon: "kb" | "crm" | "handover" | "instagram"; label: string }[] = [];
   for (const part of message.parts) {
     if (!part.type.startsWith("tool-")) continue;
     const tp = part as ToolPart;
@@ -218,6 +220,9 @@ function sourcesFromParts(message: UIMessage, t: ReturnType<typeof useI18n>["t"]
     const out = tp.output as Record<string, unknown> | undefined;
     if (name === "search_knowledge_base" && Array.isArray(out?.["articles"])) {
       for (const a of out["articles"] as { title: string }[]) sources.push({ icon: "kb", label: a.title });
+    }
+    if (name === "search_instagram_posts" && out?.["found"] && Array.isArray(out["posts"])) {
+      for (const p of out["posts"] as { label?: string }[]) if (p.label) sources.push({ icon: "instagram", label: p.label });
     }
     if (name === "get_orders" && Array.isArray(out?.["orders"])) {
       for (const o of out["orders"] as { order_number: string }[])
@@ -446,6 +451,8 @@ function TestChat() {
                               <BookOpen className="size-3" />
                             ) : s.icon === "crm" ? (
                               <Database className="size-3" />
+                            ) : s.icon === "instagram" ? (
+                              <ChannelIcon channel="instagram" className="size-3" />
                             ) : (
                               <Headset className="size-3" />
                             )}

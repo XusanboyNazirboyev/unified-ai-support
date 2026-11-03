@@ -113,7 +113,7 @@ export function formatSum(value: number | string, currency = "UZS"): string {
   return currency === "UZS" ? `${formatted} so'm` : `${formatted} ${currency}`;
 }
 
-export type MessageSource = { type: "kb" | "crm"; label: string };
+export type MessageSource = { type: "kb" | "crm" | "instagram"; label: string };
 
 /**
  * Why the agent wants to transfer a chat to a human.
