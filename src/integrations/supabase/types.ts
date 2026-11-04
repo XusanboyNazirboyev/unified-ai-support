@@ -271,7 +271,9 @@ export type Database = {
           ig_user_id: string
           last_error: string | null
           last_synced_at: string | null
+          messaging_enabled: boolean
           owner_id: string
+          scopes: string | null
           token_refreshed_at: string
           username: string
         }
@@ -281,7 +283,9 @@ export type Database = {
           ig_user_id: string
           last_error?: string | null
           last_synced_at?: string | null
+          messaging_enabled?: boolean
           owner_id: string
+          scopes?: string | null
           token_refreshed_at?: string
           username: string
         }
@@ -291,9 +295,29 @@ export type Database = {
           ig_user_id?: string
           last_error?: string | null
           last_synced_at?: string | null
+          messaging_enabled?: boolean
           owner_id?: string
+          scopes?: string | null
           token_refreshed_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      instagram_message_events: {
+        Row: {
+          created_at: string
+          mid: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          mid: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          mid?: string
+          owner_id?: string
         }
         Relationships: []
       }

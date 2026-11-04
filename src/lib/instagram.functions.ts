@@ -11,7 +11,12 @@ export const getInstagramAccount = createServerFn({ method: "GET" })
     const { loadInstagramAccount } = await import("@/lib/instagram.server");
     const account = await loadInstagramAccount(context.userId);
     return account
-      ? { username: account.username, last_synced_at: account.last_synced_at, last_error: account.last_error }
+      ? {
+          username: account.username,
+          last_synced_at: account.last_synced_at,
+          last_error: account.last_error,
+          messaging_enabled: account.messaging_enabled,
+        }
       : null;
   });
 
@@ -19,30 +24,11 @@ export const connectInstagram = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ token: z.string().trim().min(20).max(800) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { fetchInstagramProfile, syncInstagramPosts, InstagramError } = await import("@/lib/instagram.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { saveConnectedAccount, InstagramError } = await import("@/lib/instagram.server");
     const token = normalizeInstagramToken(data.token);
     if (!token) return { ok: false as const, error: "invalid_token" as const };
     try {
-      const profile = await fetchInstagramProfile(token);
-      const { data: other } = await supabaseAdmin
-        .from("instagram_accounts")
-        .select("owner_id")
-        .eq("ig_user_id", profile.id)
-        .neq("owner_id", context.userId)
-        .maybeSingle();
-      if (other) return { ok: false as const, error: "in_use" as const };
-      const { error } = await supabaseAdmin.from("instagram_accounts").upsert({
-        owner_id: context.userId,
-        ig_user_id: profile.id,
-        username: profile.username,
-        access_token: token,
-        token_refreshed_at: new Date().toISOString(),
-        last_error: null,
-      });
-      if (error) throw new Error(`Saqlab bo'lmadi: ${error.message}`);
-      const synced = await syncInstagramPosts(context.userId);
-      return { ok: true as const, username: profile.username, ...synced };
+      return await saveConnectedAccount(context.userId, token, null);
     } catch (e) {
       if (e instanceof InstagramError) {
         return { ok: false as const, error: e.kind, detail: e.message };
@@ -54,9 +40,8 @@ export const connectInstagram = createServerFn({ method: "POST" })
 export const disconnectInstagram = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("instagram_posts").delete().eq("owner_id", context.userId);
-    await supabaseAdmin.from("instagram_accounts").delete().eq("owner_id", context.userId);
+    const { removeInstagramAccount } = await import("@/lib/instagram.server");
+    await removeInstagramAccount(context.userId);
     return { ok: true };
   });
 
@@ -101,4 +86,48 @@ export const retryInstagramPost = createServerFn({ method: "POST" })
       .neq("status", "analyzing");
     const status = await analyzeInstagramPost(context.userId, data.id);
     return { status };
+  });
+
+/** One-click connect: the Instagram login link (null when the platform's Meta app keys are not set yet). */
+export const getInstagramLoginUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ origin: z.string().url().max(300) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { instagramAppConfig, signState } = await import("@/lib/instagram.server");
+    const { buildInstagramAuthorizeUrl, encodeStateBody, INSTAGRAM_OAUTH_CALLBACK_PATH, OAUTH_STATE_TTL_MS } = await import(
+      "@/lib/instagram-rules"
+    );
+    const { publicWebhookBase } = await import("@/lib/telegram-rules");
+    const app = instagramAppConfig();
+    if (!app) return { ok: false as const, error: "not_configured" as const };
+    const base = publicWebhookBase(data.origin);
+    if (!base) return { ok: false as const, error: "no_public_url" as const };
+    const body = encodeStateBody({
+      userId: context.userId,
+      origin: new URL(data.origin).origin,
+      expiresAt: Date.now() + OAUTH_STATE_TTL_MS,
+      nonce: crypto.randomUUID(),
+    });
+    const state = await signState(body, app.appSecret);
+    return { ok: true as const, url: buildInstagramAuthorizeUrl(app.appId, `${base}${INSTAGRAM_OAUTH_CALLBACK_PATH}`, state) };
+  });
+
+/** Addresses the platform owner pastes into the Meta app settings. */
+export const getInstagramSetupInfo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ origin: z.string().url().max(300) }).parse(input))
+  .handler(async ({ data }) => {
+    const { instagramAppConfig } = await import("@/lib/instagram.server");
+    const rules = await import("@/lib/instagram-rules");
+    const { publicWebhookBase } = await import("@/lib/telegram-rules");
+    const base = publicWebhookBase(data.origin) ?? new URL(data.origin).origin;
+    return {
+      oneClick: !!instagramAppConfig(),
+      verifyTokenSet: !!process.env["INSTAGRAM_WEBHOOK_VERIFY_TOKEN"],
+      redirectUri: `${base}${rules.INSTAGRAM_OAUTH_CALLBACK_PATH}`,
+      webhookUrl: `${base}${rules.INSTAGRAM_WEBHOOK_PATH}`,
+      deauthorizeUrl: `${base}${rules.INSTAGRAM_DEAUTHORIZE_PATH}`,
+      dataDeletionUrl: `${base}${rules.INSTAGRAM_DATA_DELETION_PATH}`,
+      privacyUrl: `${base}/privacy`,
+    };
   });
