@@ -165,7 +165,7 @@ export function findInstagramPosts<T extends StoredPost>(posts: T[], query: stri
     const exact = posts.filter((p) => p.shortcode === code);
     if (exact.length) return exact;
   }
-  const docs = posts.map((p) => ({ post: p, ...searchText(p) }));
+  const docs = posts.map((p) => ({ id: p.id, category: "instagram", post: p, ...searchText(p) }));
   return rankKbArticles(query, docs, limit).map((d) => d.post);
 }
 

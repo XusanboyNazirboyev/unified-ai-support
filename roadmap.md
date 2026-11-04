@@ -9,3 +9,6 @@
 - [x] Bitrix24: agent finds customer by phone, tells deal stage, saves new requests as leads
 - [ ] Paste a Bitrix24 inbound webhook on the CRM page and try it — waiting on user
 - [ ] Other external CRM (amoCRM, HubSpot) — not needed yet
+- [x] Instagram posts/reels: AI watches the business's own posts and answers customers about them
+- [ ] Connect a real Instagram account with a Meta token on the Channels page — waiting on user
+- [ ] Instagram Direct messages in Inbox — needs Meta app review

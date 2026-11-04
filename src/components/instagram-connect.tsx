@@ -194,7 +194,7 @@ export function InstagramConnect() {
         <p className="rounded-lg bg-accent px-3 py-2 text-xs text-accent-foreground">{t("ig.analyzingLeft", { n: left })}</p>
       )}
       {posts && posts.length === 0 && <p className="text-sm text-muted-foreground">{t("ig.empty")}</p>}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3">
         {(posts ?? []).map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
@@ -298,8 +298,8 @@ function PostCard({ post }: { post: InstagramPost }) {
         <div className="flex gap-2">
           <Textarea
             id={`ig-note-${post.id}`}
-            rows={1}
-            className="min-h-9 text-xs"
+            rows={2}
+            className="min-h-14 text-xs"
             placeholder={t("ig.notePlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
