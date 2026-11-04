@@ -21,7 +21,11 @@ import { Route as AuthenticatedKnowledgeRouteImport } from './routes/_authentica
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent-chat'
 import { Route as ApiMediaAnalyzeRouteImport } from './routes/api/media-analyze'
 import { Route as ApiVoiceTranscribeRouteImport } from './routes/api/voice-transcribe'
+import { Route as ApiPublicInstagramDataDeletionRouteImport } from './routes/api/public/instagram/data-deletion'
+import { Route as ApiPublicInstagramDeauthorizeRouteImport } from './routes/api/public/instagram/deauthorize'
+import { Route as ApiPublicInstagramOauthCallbackRouteImport } from './routes/api/public/instagram/oauth-callback'
 import { Route as ApiPublicInstagramSyncRouteImport } from './routes/api/public/instagram/sync'
+import { Route as ApiPublicInstagramWebhookRouteImport } from './routes/api/public/instagram/webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -83,11 +87,35 @@ const ApiVoiceTranscribeRoute = ApiVoiceTranscribeRouteImport.update({
   path: '/api/voice-transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicInstagramDataDeletionRoute =
+  ApiPublicInstagramDataDeletionRouteImport.update({
+    id: '/api/public/instagram/data-deletion',
+    path: '/api/public/instagram/data-deletion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicInstagramDeauthorizeRoute =
+  ApiPublicInstagramDeauthorizeRouteImport.update({
+    id: '/api/public/instagram/deauthorize',
+    path: '/api/public/instagram/deauthorize',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicInstagramOauthCallbackRoute =
+  ApiPublicInstagramOauthCallbackRouteImport.update({
+    id: '/api/public/instagram/oauth-callback',
+    path: '/api/public/instagram/oauth-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicInstagramSyncRoute = ApiPublicInstagramSyncRouteImport.update({
   id: '/api/public/instagram/sync',
   path: '/api/public/instagram/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicInstagramWebhookRoute =
+  ApiPublicInstagramWebhookRouteImport.update({
+    id: '/api/public/instagram/webhook',
+    path: '/api/public/instagram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -107,7 +135,11 @@ export interface FileRoutesByFullPath {
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/instagram/data-deletion': typeof ApiPublicInstagramDataDeletionRoute
+  '/api/public/instagram/deauthorize': typeof ApiPublicInstagramDeauthorizeRoute
+  '/api/public/instagram/oauth-callback': typeof ApiPublicInstagramOauthCallbackRoute
   '/api/public/instagram/sync': typeof ApiPublicInstagramSyncRoute
+  '/api/public/instagram/webhook': typeof ApiPublicInstagramWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -122,7 +154,11 @@ export interface FileRoutesByTo {
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/instagram/data-deletion': typeof ApiPublicInstagramDataDeletionRoute
+  '/api/public/instagram/deauthorize': typeof ApiPublicInstagramDeauthorizeRoute
+  '/api/public/instagram/oauth-callback': typeof ApiPublicInstagramOauthCallbackRoute
   '/api/public/instagram/sync': typeof ApiPublicInstagramSyncRoute
+  '/api/public/instagram/webhook': typeof ApiPublicInstagramWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -139,7 +175,11 @@ export interface FileRoutesById {
   '/api/agent-chat': typeof ApiAgentChatRoute
   '/api/media-analyze': typeof ApiMediaAnalyzeRoute
   '/api/voice-transcribe': typeof ApiVoiceTranscribeRoute
+  '/api/public/instagram/data-deletion': typeof ApiPublicInstagramDataDeletionRoute
+  '/api/public/instagram/deauthorize': typeof ApiPublicInstagramDeauthorizeRoute
+  '/api/public/instagram/oauth-callback': typeof ApiPublicInstagramOauthCallbackRoute
   '/api/public/instagram/sync': typeof ApiPublicInstagramSyncRoute
+  '/api/public/instagram/webhook': typeof ApiPublicInstagramWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
@@ -156,7 +196,11 @@ export interface FileRouteTypes {
     | '/api/agent-chat'
     | '/api/media-analyze'
     | '/api/voice-transcribe'
+    | '/api/public/instagram/data-deletion'
+    | '/api/public/instagram/deauthorize'
+    | '/api/public/instagram/oauth-callback'
     | '/api/public/instagram/sync'
+    | '/api/public/instagram/webhook'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -171,7 +215,11 @@ export interface FileRouteTypes {
     | '/api/agent-chat'
     | '/api/media-analyze'
     | '/api/voice-transcribe'
+    | '/api/public/instagram/data-deletion'
+    | '/api/public/instagram/deauthorize'
+    | '/api/public/instagram/oauth-callback'
     | '/api/public/instagram/sync'
+    | '/api/public/instagram/webhook'
     | '/api/public/telegram/webhook'
   id:
     | '__root__'
@@ -187,7 +235,11 @@ export interface FileRouteTypes {
     | '/api/agent-chat'
     | '/api/media-analyze'
     | '/api/voice-transcribe'
+    | '/api/public/instagram/data-deletion'
+    | '/api/public/instagram/deauthorize'
+    | '/api/public/instagram/oauth-callback'
     | '/api/public/instagram/sync'
+    | '/api/public/instagram/webhook'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -198,7 +250,11 @@ export interface RootRouteChildren {
   ApiAgentChatRoute: typeof ApiAgentChatRoute
   ApiMediaAnalyzeRoute: typeof ApiMediaAnalyzeRoute
   ApiVoiceTranscribeRoute: typeof ApiVoiceTranscribeRoute
+  ApiPublicInstagramDataDeletionRoute: typeof ApiPublicInstagramDataDeletionRoute
+  ApiPublicInstagramDeauthorizeRoute: typeof ApiPublicInstagramDeauthorizeRoute
+  ApiPublicInstagramOauthCallbackRoute: typeof ApiPublicInstagramOauthCallbackRoute
   ApiPublicInstagramSyncRoute: typeof ApiPublicInstagramSyncRoute
+  ApiPublicInstagramWebhookRoute: typeof ApiPublicInstagramWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -288,11 +344,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVoiceTranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/instagram/data-deletion': {
+      id: '/api/public/instagram/data-deletion'
+      path: '/api/public/instagram/data-deletion'
+      fullPath: '/api/public/instagram/data-deletion'
+      preLoaderRoute: typeof ApiPublicInstagramDataDeletionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/instagram/deauthorize': {
+      id: '/api/public/instagram/deauthorize'
+      path: '/api/public/instagram/deauthorize'
+      fullPath: '/api/public/instagram/deauthorize'
+      preLoaderRoute: typeof ApiPublicInstagramDeauthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/instagram/oauth-callback': {
+      id: '/api/public/instagram/oauth-callback'
+      path: '/api/public/instagram/oauth-callback'
+      fullPath: '/api/public/instagram/oauth-callback'
+      preLoaderRoute: typeof ApiPublicInstagramOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/instagram/sync': {
       id: '/api/public/instagram/sync'
       path: '/api/public/instagram/sync'
       fullPath: '/api/public/instagram/sync'
       preLoaderRoute: typeof ApiPublicInstagramSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/instagram/webhook': {
+      id: '/api/public/instagram/webhook'
+      path: '/api/public/instagram/webhook'
+      fullPath: '/api/public/instagram/webhook'
+      preLoaderRoute: typeof ApiPublicInstagramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/telegram/webhook': {
@@ -333,7 +417,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentChatRoute: ApiAgentChatRoute,
   ApiMediaAnalyzeRoute: ApiMediaAnalyzeRoute,
   ApiVoiceTranscribeRoute: ApiVoiceTranscribeRoute,
+  ApiPublicInstagramDataDeletionRoute: ApiPublicInstagramDataDeletionRoute,
+  ApiPublicInstagramDeauthorizeRoute: ApiPublicInstagramDeauthorizeRoute,
+  ApiPublicInstagramOauthCallbackRoute: ApiPublicInstagramOauthCallbackRoute,
   ApiPublicInstagramSyncRoute: ApiPublicInstagramSyncRoute,
+  ApiPublicInstagramWebhookRoute: ApiPublicInstagramWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
