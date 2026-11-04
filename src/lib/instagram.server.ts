@@ -97,7 +97,7 @@ export async function loadInstagramAccount(ownerId: string) {
   const db = await admin();
   const { data } = await db
     .from("instagram_accounts")
-    .select("owner_id, ig_user_id, username, access_token, token_refreshed_at, last_synced_at, last_error")
+    .select("owner_id, ig_user_id, username, access_token, token_refreshed_at, last_synced_at, last_error, messaging_enabled")
     .eq("owner_id", ownerId)
     .maybeSingle();
   return data;
