@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Image as ImageIcon, RefreshCw, Sparkles } from "lucide-react";
+import { Copy, ExternalLink, Image as ImageIcon, MessageCircle, RefreshCw, Settings2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,8 @@ import {
   connectInstagram,
   disconnectInstagram,
   getInstagramAccount,
+  getInstagramLoginUrl,
+  getInstagramSetupInfo,
   retryInstagramPost,
   syncInstagramNow,
 } from "@/lib/instagram.functions";
@@ -51,7 +53,13 @@ export function InstagramConnect() {
   const disconnect = useServerFn(disconnectInstagram);
   const sync = useServerFn(syncInstagramNow);
   const analyzeNext = useServerFn(analyzeNextInstagramPost);
+  const loginUrl = useServerFn(getInstagramLoginUrl);
+  const fetchSetup = useServerFn(getInstagramSetupInfo);
   const { data: account, isLoading } = useQuery({ queryKey: ["instagram_account"], queryFn: () => fetchAccount() });
+  const { data: setup } = useQuery({
+    queryKey: ["instagram_setup"],
+    queryFn: () => fetchSetup({ data: { origin: window.location.origin } }),
+  });
   const { data: posts } = useQuery({ ...instagramPostsQuery, enabled: !!account });
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
@@ -89,6 +97,45 @@ export function InstagramConnect() {
     if (account && hasWaiting) void runQueue();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, hasWaiting]);
+
+  // The login popup reports back when Instagram is connected.
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      const d = e.data as { type?: string; status?: string; username?: string; total?: number; messaging?: boolean } | null;
+      if (!d || d.type !== "javobchi-instagram") return;
+      if (d.status === "ok") {
+        toast.success(t("ig.connectedOk", { name: d.username ?? "", n: d.total ?? 0 }));
+        if (!d.messaging) toast.info(t("ig.directOff"));
+      } else if (d.status === "in_use") toast.error(t("ig.err.in_use"));
+      else if (d.status === "denied") toast.error(t("ig.err.denied"));
+      else toast.error(t("ig.err.failed"));
+      void refresh();
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function onOneClick() {
+    // Open the window right away (inside the click) so the browser does not block it.
+    const popup = window.open("about:blank", "javobchi_instagram", "width=620,height=780");
+    setBusy(true);
+    try {
+      const res = await loginUrl({ data: { origin: window.location.origin } });
+      if (!res.ok) {
+        popup?.close();
+        toast.error(t(res.error === "no_public_url" ? "ig.err.no_public_url" : "ig.err.not_configured"));
+        return;
+      }
+      if (popup) popup.location.href = res.url;
+      else window.open(res.url, "_blank", "noopener");
+    } catch (e) {
+      popup?.close();
+      toast.error(e instanceof Error ? e.message : t("ig.err.failed"));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onConnect() {
     if (!token.trim()) return;
@@ -137,6 +184,32 @@ export function InstagramConnect() {
 
   if (isLoading) return null;
 
+  const manual = (
+    <div className="space-y-3">
+      <ol className="space-y-1 text-sm text-muted-foreground">
+        <li>{t("ig.step1")}</li>
+        <li>{t("ig.step2")}</li>
+        <li>{t("ig.step3")}</li>
+      </ol>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex-1 space-y-1.5">
+          <Label htmlFor="ig-token">{t("ig.tokenLabel")}</Label>
+          <Input
+            id="ig-token"
+            type="password"
+            autoComplete="off"
+            placeholder="IGAA..."
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+        </div>
+        <Button variant={setup?.oneClick ? "outline" : "default"} onClick={() => void onConnect()} disabled={busy || token.trim().length < 20}>
+          {busy ? t("ig.connecting") : t("ig.connect")}
+        </Button>
+      </div>
+    </div>
+  );
+
   if (!account) {
     return (
       <div className="mt-4 space-y-3 rounded-xl border bg-muted/40 p-4">
@@ -144,27 +217,24 @@ export function InstagramConnect() {
           <Sparkles className="size-4 text-primary" /> {t("ig.title")}
         </div>
         <p className="text-sm text-muted-foreground">{t("ig.intro")}</p>
-        <ol className="space-y-1 text-sm text-muted-foreground">
-          <li>{t("ig.step1")}</li>
-          <li>{t("ig.step2")}</li>
-          <li>{t("ig.step3")}</li>
-        </ol>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="flex-1 space-y-1.5">
-            <Label htmlFor="ig-token">{t("ig.tokenLabel")}</Label>
-            <Input
-              id="ig-token"
-              type="password"
-              autoComplete="off"
-              placeholder="IGAA..."
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-            />
-          </div>
-          <Button onClick={() => void onConnect()} disabled={busy || token.trim().length < 20}>
-            {busy ? t("ig.connecting") : t("ig.connect")}
-          </Button>
-        </div>
+        {setup?.oneClick ? (
+          <>
+            <Button className="w-full bg-instagram text-primary-foreground hover:bg-instagram/90" onClick={() => void onOneClick()} disabled={busy}>
+              {busy ? t("ig.connecting") : t("ig.oneClick")}
+            </Button>
+            <p className="text-xs text-muted-foreground">{t("ig.oneClickNote")}</p>
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted-foreground">{t("ig.manualToggle")}</summary>
+              <div className="mt-3">{manual}</div>
+            </details>
+          </>
+        ) : (
+          <>
+            {manual}
+            <p className="text-xs text-muted-foreground">{t("ig.oneClickSoon")}</p>
+          </>
+        )}
+        {setup && <MetaAppSettings setup={setup} />}
       </div>
     );
   }
@@ -188,6 +258,10 @@ export function InstagramConnect() {
           </Button>
         </div>
       </div>
+      <p className={cn("flex items-center gap-1.5 text-xs", account.messaging_enabled ? "text-success" : "text-muted-foreground")}>
+        <MessageCircle className="size-3.5" />
+        {account.messaging_enabled ? t("ig.directOn") : t("ig.directOff")}
+      </p>
       <p className="text-xs text-muted-foreground">{t("ig.autoNote")}</p>
       {account.last_error && <p className="text-xs text-destructive">{t("ig.err.failed")}</p>}
       {left !== null && left > 0 && (
@@ -200,6 +274,56 @@ export function InstagramConnect() {
         ))}
       </div>
     </div>
+  );
+}
+
+type SetupInfo = {
+  oneClick: boolean;
+  verifyTokenSet: boolean;
+  redirectUri: string;
+  webhookUrl: string;
+  deauthorizeUrl: string;
+  dataDeletionUrl: string;
+  privacyUrl: string;
+};
+
+/** Addresses the platform owner pastes into the Meta app (one-time setup for one-click connect and Direct). */
+function MetaAppSettings({ setup }: { setup: SetupInfo }) {
+  const { t } = useI18n();
+  const rows: [MessageKey, string][] = [
+    ["ig.meta.redirect", setup.redirectUri],
+    ["ig.meta.webhook", setup.webhookUrl],
+    ["ig.meta.deauthorize", setup.deauthorizeUrl],
+    ["ig.meta.dataDeletion", setup.dataDeletionUrl],
+    ["ig.meta.privacy", setup.privacyUrl],
+  ];
+  return (
+    <details className="rounded-lg border bg-card p-3 text-xs">
+      <summary className="flex cursor-pointer items-center gap-1.5 font-medium">
+        <Settings2 className="size-3.5" /> {t("ig.meta.title")}
+      </summary>
+      <p className="mt-2 text-muted-foreground">{t("ig.meta.text")}</p>
+      <div className="mt-2 space-y-1.5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center gap-2">
+            <span className="w-36 shrink-0 text-muted-foreground">{t(label)}</span>
+            <code className="min-w-0 flex-1 truncate rounded bg-muted px-1.5 py-0.5">{value}</code>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-6"
+              aria-label={t("ig.meta.copy")}
+              onClick={() => void navigator.clipboard.writeText(value).then(() => toast.success(t("ig.meta.copied")))}
+            >
+              <Copy className="size-3" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-muted-foreground">
+        {setup.oneClick ? t("ig.meta.keysOk") : t("ig.meta.keysMissing")} {setup.verifyTokenSet ? "" : t("ig.meta.verifyMissing")}
+      </p>
+    </details>
   );
 }
 

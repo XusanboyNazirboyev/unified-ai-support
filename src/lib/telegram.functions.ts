@@ -148,6 +148,19 @@ export const sendOperatorMessage = createServerFn({ method: "POST" })
         }
       }
     }
+    if (conversation.channel === "instagram" && conversation.external_chat_id) {
+      const { loadInstagramAccount, sendInstagramText } = await import("@/lib/instagram.server");
+      const account = await loadInstagramAccount(userId);
+      if (!account?.messaging_enabled) deliveryError = "Instagram Direct ulanmagan";
+      else {
+        try {
+          await sendInstagramText(account.access_token, conversation.external_chat_id, data.text);
+        } catch (e) {
+          console.error("[instagram] operator send failed", e);
+          deliveryError = e instanceof Error ? e.message : "Instagram'ga yuborilmadi";
+        }
+      }
+    }
 
     const { error } = await supabase.from("messages").insert({
       owner_id: userId,
