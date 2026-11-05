@@ -345,7 +345,7 @@ export function describeSharedPost(att: InstagramAttachment, ownPermalink: strin
 }
 
 /** Splits Meta's `signed_request` (deauthorize / data deletion callbacks) into its signature and payload. */
-export function splitSignedRequest(value: string): { signature: string; payload: string; data: { user_id?: string } } | null {
+export function splitSignedRequest(value: string): { signature: string; payload: string; data: { user_id: string | undefined } } | null {
   const [signature, payload] = value.split(".");
   if (!signature || !payload) return null;
   const text = base64UrlDecode(payload);
