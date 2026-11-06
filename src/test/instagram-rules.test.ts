@@ -132,3 +132,83 @@ describe("token", () => {
     expect(tokenNeedsRefresh("2026-11-05T00:00:00Z", now)).toBe(false);
   });
 });
+
+import {
+  base64UrlEncode,
+  buildInstagramAuthorizeUrl,
+  decodeStateBody,
+  describeSharedPost,
+  encodeStateBody,
+  parseInstagramWebhook,
+  splitInstagramText,
+  splitSignedRequest,
+} from "@/lib/instagram-rules";
+
+describe("one-click connect", () => {
+  it("asks Instagram for profile and Direct message permissions", () => {
+    const url = new URL(buildInstagramAuthorizeUrl("123", "https://x.app/api/public/instagram/oauth-callback", "s.t"));
+    expect(url.searchParams.get("scope")).toBe("instagram_business_basic,instagram_business_manage_messages");
+    expect(url.searchParams.get("redirect_uri")).toBe("https://x.app/api/public/instagram/oauth-callback");
+  });
+
+  it("a connect link expires after its time", () => {
+    const body = encodeStateBody({ userId: "u1", origin: "https://x.app", expiresAt: 2000, nonce: "n" });
+    expect(decodeStateBody(body, 1000)?.userId).toBe("u1");
+    expect(decodeStateBody(body, 3000)).toBeNull();
+  });
+});
+
+describe("Instagram Direct webhook", () => {
+  const delivery = {
+    object: "instagram",
+    entry: [
+      {
+        id: "17841400000000000",
+        messaging: [
+          { sender: { id: "999" }, recipient: { id: "17841400000000000" }, timestamp: 1, message: { mid: "m1", text: "Salom, narxi qancha?" } },
+          { sender: { id: "17841400000000000" }, recipient: { id: "999" }, message: { mid: "m2", text: "echo", is_echo: true } },
+          { sender: { id: "999" }, recipient: { id: "17841400000000000" }, read: { mid: "m1" } },
+          {
+            sender: { id: "999" },
+            recipient: { id: "17841400000000000" },
+            message: { mid: "m3", attachments: [{ type: "ig_reel", payload: { reel_video_id: "555", title: "Yangi quloqchin", url: "https://cdn/r.mp4" } }] },
+          },
+        ],
+      },
+    ],
+  };
+
+  it("keeps customer messages and skips the business's own echoes and read receipts", () => {
+    const msgs = parseInstagramWebhook(delivery);
+    expect(msgs.map((m) => m.mid)).toEqual(["m1", "m3"]);
+    expect(msgs[0]).toMatchObject({ accountId: "17841400000000000", senderId: "999", text: "Salom, narxi qancha?" });
+  });
+
+  it("reads a shared reel so it can be matched to the business's own post", () => {
+    const att = parseInstagramWebhook(delivery)[1]!.attachments[0]!;
+    expect(att.mediaId).toBe("555");
+    expect(describeSharedPost(att, "https://www.instagram.com/reel/ABC123/")).toContain("https://www.instagram.com/reel/ABC123/");
+  });
+
+  it("ignores deliveries that are not from Instagram", () => {
+    expect(parseInstagramWebhook({ object: "page", entry: [] })).toEqual([]);
+  });
+});
+
+describe("Direct reply length", () => {
+  it("splits replies into messages of at most 1000 characters without losing text", () => {
+    const text = Array.from({ length: 60 }, (_, i) => `Gap raqami ${i}, bu yerda narx va shartlar haqida.`).join(" ");
+    const parts = splitInstagramText(text);
+    expect(parts.length).toBeGreaterThan(1);
+    expect(parts.every((p) => p.length <= 1000)).toBe(true);
+    expect(parts.join(" ").replace(/\s+/g, " ")).toBe(text.replace(/\s+/g, " "));
+  });
+});
+
+describe("Meta deletion callbacks", () => {
+  it("reads the Instagram user from a signed request", () => {
+    const payload = base64UrlEncode(JSON.stringify({ algorithm: "HMAC-SHA256", user_id: 42 }));
+    expect(splitSignedRequest(`sig.${payload}`)?.data.user_id).toBe("42");
+    expect(splitSignedRequest("garbage")).toBeNull();
+  });
+});

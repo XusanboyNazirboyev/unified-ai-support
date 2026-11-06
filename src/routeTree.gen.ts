@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DataDeletionRouteImport } from './routes/data-deletion'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthenticatedAgentRouteImport } from './routes/_authenticated/agent'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedChannelsRouteImport } from './routes/_authenticated/channels'
@@ -40,6 +42,16 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataDeletionRoute = DataDeletionRouteImport.update({
+  id: '/data-deletion',
+  path: '/data-deletion',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAgentRoute = AuthenticatedAgentRouteImport.update({
@@ -126,6 +138,8 @@ const ApiPublicTelegramWebhookRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/data-deletion': typeof DataDeletionRoute
+  '/privacy': typeof PrivacyRoute
   '/agent': typeof AuthenticatedAgentRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/channels': typeof AuthenticatedChannelsRoute
@@ -145,6 +159,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/data-deletion': typeof DataDeletionRoute
+  '/privacy': typeof PrivacyRoute
   '/agent': typeof AuthenticatedAgentRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/channels': typeof AuthenticatedChannelsRoute
@@ -166,6 +182,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/data-deletion': typeof DataDeletionRoute
+  '/privacy': typeof PrivacyRoute
   '/_authenticated/agent': typeof AuthenticatedAgentRoute
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/channels': typeof AuthenticatedChannelsRoute
@@ -187,6 +205,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/data-deletion'
+    | '/privacy'
     | '/agent'
     | '/analytics'
     | '/channels'
@@ -206,6 +226,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/data-deletion'
+    | '/privacy'
     | '/agent'
     | '/analytics'
     | '/channels'
@@ -226,6 +248,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/data-deletion'
+    | '/privacy'
     | '/_authenticated/agent'
     | '/_authenticated/analytics'
     | '/_authenticated/channels'
@@ -247,6 +271,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DataDeletionRoute: typeof DataDeletionRoute
+  PrivacyRoute: typeof PrivacyRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
   ApiMediaAnalyzeRoute: typeof ApiMediaAnalyzeRoute
   ApiVoiceTranscribeRoute: typeof ApiVoiceTranscribeRoute
@@ -279,6 +305,20 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-deletion': {
+      id: '/data-deletion'
+      path: '/data-deletion'
+      fullPath: '/data-deletion'
+      preLoaderRoute: typeof DataDeletionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/agent': {
@@ -414,6 +454,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  DataDeletionRoute: DataDeletionRoute,
+  PrivacyRoute: PrivacyRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
   ApiMediaAnalyzeRoute: ApiMediaAnalyzeRoute,
   ApiVoiceTranscribeRoute: ApiVoiceTranscribeRoute,
