@@ -22,7 +22,7 @@ export const getInstagramAccount = createServerFn({ method: "GET" })
 
 export const connectInstagram = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ token: z.string().trim().min(20).max(800) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ token: z.string().trim().min(20).max(1500) }).parse(input))
   .handler(async ({ data, context }) => {
     const { saveConnectedAccount, InstagramError } = await import("@/lib/instagram.server");
     const token = normalizeInstagramToken(data.token);

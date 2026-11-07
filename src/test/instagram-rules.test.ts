@@ -212,3 +212,21 @@ describe("Meta deletion callbacks", () => {
     expect(splitSignedRequest("garbage")).toBeNull();
   });
 });
+
+import { instagramTokenKind, pickLinkedInstagramAccount } from "@/lib/instagram-rules";
+
+describe("pasted Instagram tokens", () => {
+  const tok = "IGAA" + "x".repeat(150);
+  it("accepts a token pasted with Bearer, quotes or line breaks", () => {
+    expect(normalizeInstagramToken(`Bearer "${tok.slice(0, 80)}\n${tok.slice(80)}"`)).toBe(tok);
+  });
+  it("tells Facebook tokens (EAA…) from Instagram tokens (IGAA…)", () => {
+    expect(instagramTokenKind("EAAB" + "y".repeat(100))).toBe("facebook");
+    expect(instagramTokenKind(tok)).toBe("instagram");
+  });
+  it("finds the Instagram account linked to a Facebook Page", () => {
+    const json = { data: [{ id: "p1" }, { id: "p2", instagram_business_account: { id: "1784", username: "shop" } }] };
+    expect(pickLinkedInstagramAccount(json)).toEqual({ id: "1784", username: "shop" });
+    expect(pickLinkedInstagramAccount({ data: [{ id: "p1" }] })).toBeNull();
+  });
+});
