@@ -10,5 +10,6 @@
 - [ ] Paste a Bitrix24 inbound webhook on the CRM page and try it — waiting on user
 - [ ] Other external CRM (amoCRM, HubSpot) — not needed yet
 - [x] Instagram posts/reels: AI watches the business's own posts and answers customers about them
-- [ ] Connect a real Instagram account with a Meta token on the Channels page — waiting on user
-- [ ] Instagram Direct messages in Inbox — needs Meta app review
+- [x] One-click Instagram connect + Direct messages in Inbox (code, privacy/deletion pages, App Review guide)
+- [ ] Add Meta app keys and test with a real Instagram account — waiting on user
+- [ ] Submit Meta App Review — waiting on user
