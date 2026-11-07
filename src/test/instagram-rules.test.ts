@@ -213,7 +213,7 @@ describe("Meta deletion callbacks", () => {
   });
 });
 
-import { instagramTokenKind, normalizeInstagramToken, pickLinkedInstagramAccount } from "@/lib/instagram-rules";
+import { instagramTokenKind, pickLinkedInstagramAccount } from "@/lib/instagram-rules";
 
 describe("pasted Instagram tokens", () => {
   const tok = "IGAA" + "x".repeat(150);
