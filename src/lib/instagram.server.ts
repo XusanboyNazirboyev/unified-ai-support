@@ -3,6 +3,9 @@
 import {
   canAnalyze,
   INSTAGRAM_GRAPH,
+  FACEBOOK_GRAPH,
+  instagramTokenKind,
+  pickLinkedInstagramAccount,
   INSTAGRAM_MEDIA_FIELDS,
   instagramShortcode,
   MAX_ANALYSIS_ATTEMPTS,
@@ -25,8 +28,34 @@ export class InstagramError extends Error {
   }
 }
 
+const linkedIgIds = new Map<string, string>();
+
+/** For a Facebook (EAA…) token: the id of the Instagram account linked to the user's Facebook Page. */
+async function linkedInstagramId(token: string): Promise<string> {
+  const cached = linkedIgIds.get(token);
+  if (cached) return cached;
+  const json = await rawGet(FACEBOOK_GRAPH, "/me/accounts", token, { fields: "instagram_business_account{id,username}", limit: "50" });
+  const ig = pickLinkedInstagramAccount(json);
+  if (!ig) {
+    throw new InstagramError(
+      "Bu Facebook tokeniga ulangan Instagram professional akkaunt topilmadi. Instagram akkaunt Facebook sahifangizga bog'langanini va tokenda instagram_basic, pages_show_list ruxsatlari borligini tekshiring.",
+      "failed",
+    );
+  }
+  linkedIgIds.set(token, ig.id);
+  return ig.id;
+}
+
 async function graphGet(path: string, token: string, params: Record<string, string> = {}): Promise<unknown> {
-  const url = new URL(`${INSTAGRAM_GRAPH}${path}`);
+  if (instagramTokenKind(token) === "facebook") {
+    const p = path === "/me" || path.startsWith("/me/") ? `/${await linkedInstagramId(token)}${path.slice(3)}` : path;
+    return rawGet(FACEBOOK_GRAPH, p, token, params);
+  }
+  return rawGet(INSTAGRAM_GRAPH, path, token, params);
+}
+
+async function rawGet(base: string, path: string, token: string, params: Record<string, string> = {}): Promise<unknown> {
+  const url = new URL(`${base}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   url.searchParams.set("access_token", token);
   let response: Response;
@@ -38,8 +67,14 @@ async function graphGet(path: string, token: string, params: Record<string, stri
   const text = await response.text();
   if (!response.ok) {
     console.error(`[instagram] ${path} failed [${response.status}]: ${text.slice(0, 400)}`);
-    const tokenProblem = response.status === 401 || /OAuthException|access token|code":190/i.test(text);
-    throw new InstagramError(`Instagram xatosi [${response.status}]: ${text.slice(0, 300)}`, tokenProblem ? "invalid_token" : "failed");
+    const tokenProblem = response.status === 401 || /"code":\s*190/.test(text);
+    let reason = text.slice(0, 300);
+    try {
+      reason = ((JSON.parse(text) as { error?: { message?: string } }).error?.message ?? reason).slice(0, 300);
+    } catch {
+      /* keep raw text */
+    }
+    throw new InstagramError(`Meta javobi: ${reason}`, tokenProblem ? "invalid_token" : "failed");
   }
   try {
     return JSON.parse(text);
@@ -49,7 +84,8 @@ async function graphGet(path: string, token: string, params: Record<string, stri
 }
 
 export async function fetchInstagramProfile(token: string): Promise<{ id: string; username: string }> {
-  const json = (await graphGet("/me", token, { fields: "user_id,username" })) as Record<string, unknown>;
+  const fields = instagramTokenKind(token) === "facebook" ? "id,username" : "user_id,username";
+  const json = (await graphGet("/me", token, { fields })) as Record<string, unknown>;
   const id = String(json["user_id"] ?? json["id"] ?? "");
   const username = typeof json["username"] === "string" ? json["username"] : "";
   if (!id || !username) throw new InstagramError("Instagram akkaunt ma'lumoti kelmadi", "invalid_token");
@@ -72,6 +108,7 @@ async function fetchMediaItem(token: string, mediaId: string): Promise<Instagram
 
 /** Extends a long-lived token by another 60 days; returns null when Instagram refuses (token stays as is). */
 async function refreshToken(token: string): Promise<string | null> {
+  if (instagramTokenKind(token) === "facebook") return null;
   try {
     const url = new URL("https://graph.instagram.com/refresh_access_token");
     url.searchParams.set("grant_type", "ig_refresh_token");

@@ -146,7 +146,8 @@ export function InstagramConnect() {
         toast.success(t("ig.connectedOk", { name: res.username, n: res.total }));
         setToken("");
       } else {
-        toast.error(t(ERRORS[res.error]));
+        const detail = "detail" in res && typeof res.detail === "string" ? res.detail : undefined;
+        toast.error(t(ERRORS[res.error]), { description: detail, duration: 12000 });
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("ig.err.failed"));

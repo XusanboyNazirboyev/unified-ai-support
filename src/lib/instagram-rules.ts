@@ -36,8 +36,35 @@ const mediaType = (v: unknown): InstagramMediaType | null =>
 
 /** Tokens from Meta's "Generate token" button: long, no spaces. Returns the trimmed token or null. */
 export function normalizeInstagramToken(value: string): string | null {
-  const token = value.trim();
-  return /^[A-Za-z0-9_\-.|]{40,700}$/.test(token) ? token : null;
+  // People often paste "Bearer …", quotes, or a token broken across lines.
+  const token = value
+    .trim()
+    .replace(/^bearer\s+/i, "")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/\s+/g, "");
+  return /^[A-Za-z0-9_\-.|%]{40,1200}$/.test(token) ? token : null;
+}
+
+/**
+ * "instagram" tokens (IGAA…, from Instagram Login / "Generate token") talk to graph.instagram.com;
+ * "facebook" tokens (EAA…, from Graph API Explorer or Facebook Login) only work on graph.facebook.com.
+ */
+export function instagramTokenKind(token: string): "instagram" | "facebook" {
+  return /^EAA/.test(token) ? "facebook" : "instagram";
+}
+
+export const FACEBOOK_GRAPH = "https://graph.facebook.com/v23.0";
+
+/** Picks the Instagram professional account linked to one of the user's Facebook Pages. */
+export function pickLinkedInstagramAccount(json: unknown): { id: string; username: string | null } | null {
+  const data = (json as { data?: unknown } | null)?.data;
+  if (!Array.isArray(data)) return null;
+  for (const page of data as Record<string, unknown>[]) {
+    const ig = page?.["instagram_business_account"] as Record<string, unknown> | undefined;
+    const id = str(ig?.["id"]);
+    if (id) return { id, username: str(ig?.["username"]) };
+  }
+  return null;
 }
 
 /** Reads one media object of the Graph API; null when it has no id or an unknown type. */
